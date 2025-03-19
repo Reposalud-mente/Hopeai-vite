@@ -1,0 +1,252 @@
+#root {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+/* General resets and base styles */
+:root {
+  --primary-color: #3B82F6;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --danger-color: #ef4444;
+  --text-primary: #111827;
+  --text-secondary: #4B5563;
+  --text-tertiary: #6B7280;
+  --border-color: #e5e7eb;
+  --bg-light: #f9fafb;
+  --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+/* Reset styles for layout */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Debug styles */
+.layout-debug {
+  border: 1px dashed red;
+}
+
+.height-100 {
+  height: 100%;
+}
+
+/* Ensure Ant Design layout components are visible */
+.ant-layout {
+  background: #f5f5f5;
+  min-height: 100%;
+}
+
+.ant-layout-header {
+  background: #fff;
+}
+
+.ant-layout-sider {
+  background: #fff;
+}
+
+.ant-layout-content {
+  background: #f5f5f5;
+}
+
+/* Navigation */
+.ant-menu-item {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  transition: all 0.3s ease !important;
+}
+
+.ant-menu-item-selected {
+  background-color: #f0f7ff !important;
+  border-left: 3px solid var(--primary-color) !important;
+}
+
+/* Cards */
+.ant-card {
+  border-radius: 8px !important;
+  box-shadow: var(--card-shadow) !important;
+  border: none !important;
+}
+
+.ant-card-head {
+  padding: 16px !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+.ant-card-body {
+  padding: 16px !important;
+}
+
+/* Patient list buttons */
+.patient-item {
+  transition: all 0.2s ease !important;
+}
+
+.patient-item:hover {
+  background: rgba(59, 130, 246, 0.03) !important;
+}
+
+.patient-item-active {
+  background: rgba(59, 130, 246, 0.05) !important;
+  border-left: 3px solid #3B82F6 !important;
+}
+
+/* Tag colors */
+.ant-tag-blue {
+  background-color: #f0f7ff !important;
+  border-color: #bfdbfe !important;
+  color: #1e40af !important;
+}
+
+.ant-tag-orange {
+  background-color: #fff7ed !important;
+  border-color: #fed7aa !important;
+  color: #9a3412 !important;
+}
+
+.ant-tag-purple {
+  background-color: #faf5ff !important;
+  border-color: #e9d5ff !important;
+  color: #6b21a8 !important;
+}
+
+.ant-tag-green {
+  background-color: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
+  color: #065f46 !important;
+}
+
+/* AI analysis sidebar */
+.ai-analysis-sidebar {
+  background-color: #f8fafc !important;
+}
+
+/* Custom buttons */
+.area-button {
+  border: 1px solid var(--border-color) !important;
+  border-radius: 6px !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 8px 12px !important;
+  transition: all 0.2s ease !important;
+}
+
+.area-button:hover {
+  background-color: #f0f7ff !important;
+  border-color: #bfdbfe !important;
+}
+
+/* Step indicator */
+.step-indicator-wrapper {
+  padding: 16px 0 !important;
+}
+
+/* Custom scrollbar for textarea */
+textarea.ant-input {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db #f3f4f6;
+}
+
+textarea.ant-input::-webkit-scrollbar {
+  width: 8px;
+}
+
+textarea.ant-input::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 4px;
+}
+
+textarea.ant-input::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 4px;
+}
+
+/* Input and form controls */
+.ant-input, .ant-select-selector {
+  border-radius: 6px !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Typography adjustments */
+.ant-typography {
+  color: var(--text-primary);
+}
+
+.text-secondary {
+  color: var(--text-secondary) !important;
+}
+
+.text-tertiary {
+  color: var(--text-tertiary) !important;
+}
+
+/* Make breadcrumb more subtle */
+.ant-breadcrumb {
+  font-size: 13px !important;
+}
+
+.ant-breadcrumb a {
+  color: var(--text-tertiary) !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .ai-analysis-sidebar {
+    width: 200px !important;
+  }
+}
+
+@media (max-width: 992px) {
+  .ant-layout-sider {
+    width: 60px !important;
+    min-width: 60px !important;
+    max-width: 60px !important;
+  }
+  
+  .ant-layout-content {
+    margin-left: 60px !important;
+  }
+}
