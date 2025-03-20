@@ -10,29 +10,29 @@ import { StringOutputParser } from "@langchain/core/output_parsers";
 // Definimos el estado del grafo
 const State = Annotation.Root({
   // Entrada del paciente 
-  patientInfo: Annotation.String(),
+  patientInfo: Annotation<string>(),
   // Resultados de la identificación de síntomas
-  symptoms: Annotation.Array({
+  symptoms: Annotation<string[]>({
     default: () => [], 
     reducer: (state, update) => [...state, ...update]
   }),
   // Resultados del análisis contra el DSM-5
-  dsmAnalysis: Annotation.Array({
+  dsmAnalysis: Annotation<string[]>({
     default: () => [],
     reducer: (state, update) => [...state, ...update]
   }),
   // Diagnósticos posibles
-  possibleDiagnoses: Annotation.Array({
+  possibleDiagnoses: Annotation<string[]>({
     default: () => [],
     reducer: (state, update) => [...state, ...update]
   }),
   // Sugerencias de tratamiento
-  treatmentSuggestions: Annotation.Array({
+  treatmentSuggestions: Annotation<string[]>({
     default: () => [],
     reducer: (state, update) => [...state, ...update]
   }),
   // Pensamiento actual
-  currentThinking: Annotation.String()
+  currentThinking: Annotation<string>()
 });
 
 // Creamos un modelo de lenguaje para usar en nuestro grafo

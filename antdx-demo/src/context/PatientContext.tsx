@@ -2,19 +2,52 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { message } from 'antd';
 import { getPatients, getPatientById, updateEvaluationDraft } from '../api/patients';
 
-// Crear el contexto
-const PatientContext = createContext();
+// Define interfaces for our types
+export interface Patient {
+  id: number;
+  name: string;
+  status: string;
+  evaluationDate?: string;
+  psychologist?: string;
+  consultReason?: string;
+  evaluationDraft?: string;
+  testResults?: {
+    name: string;
+    date?: string;
+    results?: any;
+  }[];
+}
+
+// Define the shape of our context
+export interface PatientContextType {
+  patients: Patient[];
+  currentPatient: Patient | null;
+  loading: boolean;
+  error: string | null;
+  loadPatient: (id: number) => Promise<void>;
+  saveEvaluationDraft: (id: number, text: string) => Promise<boolean>;
+}
+
+// Create context with default values
+const PatientContext = createContext<PatientContextType>({
+  patients: [],
+  currentPatient: null,
+  loading: false,
+  error: null,
+  loadPatient: async () => {},
+  saveEvaluationDraft: async () => false
+});
 
 // Hook personalizado para usar el contexto
-export const usePatientContext = () => useContext(PatientContext);
+export const usePatientContext = (): PatientContextType => useContext(PatientContext);
 
 // Proveedor del contexto
-export const PatientProvider = ({ children }) => {
+export const PatientProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
   // Estados
-  const [patients, setPatients] = useState([]);
-  const [currentPatient, setCurrentPatient] = useState(null);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [currentPatient, setCurrentPatient] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Cargar la lista de pacientes
   const loadPatients = async () => {
@@ -32,7 +65,7 @@ export const PatientProvider = ({ children }) => {
   };
 
   // Cargar un paciente específico
-  const loadPatient = async (patientId) => {
+  const loadPatient = async (patientId: number) => {
     if (!patientId) return;
     
     setLoading(true);
@@ -49,7 +82,7 @@ export const PatientProvider = ({ children }) => {
   };
 
   // Guardar el borrador de evaluación
-  const saveEvaluationDraft = async (patientId, draftText) => {
+  const saveEvaluationDraft = async (patientId: number, draftText: string) => {
     if (!patientId) return;
     
     setLoading(true);
@@ -80,12 +113,11 @@ export const PatientProvider = ({ children }) => {
   }, []);
 
   // Valor del contexto
-  const contextValue = {
+  const contextValue: PatientContextType = {
     patients,
     currentPatient,
     loading,
     error,
-    loadPatients,
     loadPatient,
     saveEvaluationDraft
   };

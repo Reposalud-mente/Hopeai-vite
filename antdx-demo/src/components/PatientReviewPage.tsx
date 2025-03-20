@@ -31,15 +31,36 @@ import {
   PaperClipOutlined,
   LoadingOutlined
 } from '@ant-design/icons';
-// Importamos los componentes que vamos a usar
+// Import types properly for Ant Design X components
 import { ThoughtChain, Suggestion, Bubble } from '@ant-design/x';
+import type { SuggestionItem, ThoughtStep } from '@ant-design/x';
 // Importamos nuestro hook personalizado y el contexto
 import { useClinicalAI } from '../hooks/useClinicalAI';
-import { usePatientContext } from '../context/PatientContext';
+import { usePatientContext, Patient } from '../context/PatientContext';
 
 const { Header, Content, Sider } = Layout;
 const { Text, Title } = Typography;
 const { TextArea } = Input;
+
+// Define correct prop types for the AntDX components
+interface ThoughtStepType {
+  title: string;
+  description: string;
+  status: 'wait' | 'processing' | 'finish' | 'error';
+  icon?: React.ReactNode;
+}
+
+// Convert our diagnosis type to Suggestion items
+const mapDiagnosisToSuggestionItems = (diagnoses: any[]): SuggestionItem[] => {
+  return diagnoses.map(d => ({
+    label: d.name,
+    value: d.name,
+    description: d.description,
+    // Map confidence to severity level
+    severity: d.confidence === 'Alta' ? 'success' : 
+              d.confidence === 'Media' ? 'warning' : 'error'
+  }));
+};
 
 const PatientReviewPage = () => {
   const [showAIAssistant, setShowAIAssistant] = useState(false);
@@ -109,7 +130,7 @@ const PatientReviewPage = () => {
   };
   
   // Función para seleccionar un paciente
-  const handleSelectPatient = (patientId) => {
+  const handleSelectPatient = (patientId: number) => {
     loadPatient(patientId);
   };
 
@@ -406,8 +427,7 @@ const PatientReviewPage = () => {
                                   <div style={{ padding: '8px 4px 0' }}>
                                     <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>Diagnósticos sugeridos:</Text>
                                     <Suggestion
-                                      items={suggestedDiagnoses}
-                                      size="small"
+                                      items={mapDiagnosisToSuggestionItems(suggestedDiagnoses)}
                                       style={{ fontSize: 11 }}
                                     />
                                   </div>
