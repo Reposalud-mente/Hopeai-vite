@@ -2,10 +2,10 @@ import './App.css'
 import { PatientProvider } from './context/PatientContext'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import ErrorManager from './components/ErrorManager'
-import { ConfigProvider, theme } from 'antd'
+import { ConfigProvider, theme, message } from 'antd'
 import esES from 'antd/es/locale/es_ES'
-import React, { lazy } from 'react'
-import SuspenseWrapper from './components/SuspenseWrapper'
+import React, { lazy, Suspense } from 'react'
+import LoadingFeedback from './components/LoadingFeedback'
 
 // Componentes de diseño
 import AppLayout from './components/AppLayout'
@@ -16,16 +16,35 @@ const PatientsListPage = lazy(() => import('./pages/PatientsListPage'))
 const AnalysisPage = lazy(() => import('./pages/AnalysisPage'))
 const PatientDetailsPage = lazy(() => import('./pages/PatientDetailsPage'))
 const NewPatientPage = lazy(() => import('./pages/NewPatientPage'))
+const ClinicalAnalysisPage = lazy(() => import('./pages/ClinicalAnalysisPage'))
+
+// Envoltorio para Suspense
+const SuspenseWrapper = ({ children }: { children: React.ReactNode }) => (
+  <Suspense fallback={<LoadingFeedback loading={true} />}>
+    {children}
+  </Suspense>
+)
 
 function App() {
+  // Configuración global de mensajes
+  message.config({
+    top: 80,
+    duration: 3,
+    maxCount: 3,
+  })
+
   return (
     <ConfigProvider 
       locale={esES}
       theme={{
         algorithm: theme.defaultAlgorithm,
         token: {
-          colorPrimary: '#3B82F6',
+          colorPrimary: '#006d75',
           borderRadius: 6,
+          colorSuccess: '#52c41a',
+          colorWarning: '#faad14',
+          colorError: '#f5222d',
+          colorInfo: '#1890ff',
           fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
         },
         components: {
@@ -33,7 +52,8 @@ function App() {
             bodyBg: '#f5f5f5',
             headerBg: '#ffffff',
             headerHeight: 64,
-            siderBg: '#ffffff'
+            siderBg: '#ffffff',
+            colorBgBody: '#f0f2f5',
           },
           Menu: {
             itemBg: 'transparent',
@@ -82,6 +102,13 @@ function App() {
                 <AppLayout>
                   <SuspenseWrapper>
                     <AnalysisPage />
+                  </SuspenseWrapper>
+                </AppLayout>
+              } />
+              <Route path="/pacientes/:patientId/analisis-interactivo" element={
+                <AppLayout>
+                  <SuspenseWrapper>
+                    <ClinicalAnalysisPage />
                   </SuspenseWrapper>
                 </AppLayout>
               } />

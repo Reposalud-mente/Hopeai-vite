@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Button, Card, Tabs, Space, Typography, Modal } from 'antd';
-import { EditOutlined, ArrowLeftOutlined, HistoryOutlined } from '@ant-design/icons';
+import { Button, Card, Tabs, Space, Typography, Modal, Tooltip } from 'antd';
+import { EditOutlined, ArrowLeftOutlined, HistoryOutlined, CommentOutlined } from '@ant-design/icons';
 import { usePatientCache } from '../hooks/usePatientCache';
 import useLoadingState from '../hooks/useLoadingState';
 import PatientForm from '../components/PatientForm';
@@ -179,6 +179,13 @@ const PatientDetailsPage: React.FC = () => {
     navigate('/pacientes');
   }, [navigate]);
 
+  // Navegar a la página de análisis interactivo
+  const handleNavigateToInteractiveAnalysis = useCallback(() => {
+    if (id) {
+      navigate(`/pacientes/${id}/analisis-interactivo`);
+    }
+  }, [navigate, id]);
+
   // Si está cargando, mostrar spinner
   if (patientLoadingState.isLoading && !patient) {
     return (
@@ -213,26 +220,51 @@ const PatientDetailsPage: React.FC = () => {
   }
 
   return (
-    <div>
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+    <div className="patient-details-page">
+      <div className="page-header">
         <Space>
           <Button icon={<ArrowLeftOutlined />} onClick={handleBack}>
             Volver
           </Button>
           <Title level={2} style={{ margin: 0 }}>
-            {patient.name}
+            {patient?.name || 'Detalles del Paciente'}
           </Title>
         </Space>
         
-        {!editMode && (
-          <Button 
-            type="primary" 
-            icon={<EditOutlined />} 
-            onClick={() => setEditMode(true)}
-          >
-            Editar Información
-          </Button>
-        )}
+        <Space>
+          <Tooltip title="Análisis Clínico Interactivo">
+            <Button 
+              type="primary"
+              icon={<CommentOutlined />}
+              onClick={handleNavigateToInteractiveAnalysis}
+            >
+              Análisis Interactivo
+            </Button>
+          </Tooltip>
+          
+          {!editMode ? (
+            <Button 
+              type="primary" 
+              icon={<EditOutlined />} 
+              onClick={() => setEditMode(true)}
+              loading={patientSaveState.isLoading}
+            >
+              Editar
+            </Button>
+          ) : (
+            <Space>
+              <Button onClick={handleCancelEdit}>Cancelar</Button>
+              <Button 
+                type="primary" 
+                htmlType="submit"
+                form="patient-form" 
+                loading={patientSaveState.isLoading}
+              >
+                Guardar
+              </Button>
+            </Space>
+          )}
+        </Space>
       </div>
 
       {editMode ? (

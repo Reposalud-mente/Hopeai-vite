@@ -3,6 +3,7 @@ import cors from 'cors';
 import { Patient, TestResult } from './models/patient.js';
 import { testConnection, sequelize } from './config.js';
 import { testAnalysis, analyzePatient, answerQuestion } from './controllers/clinicalAnalysisController.js';
+import clinicalQueryRoutes from './routes/clinicalQuery.routes';
 
 // Inicializar Express
 const app = express();
@@ -26,6 +27,9 @@ app.get('/api/health', async (req, res) => {
 app.get('/api/analysis', testAnalysis);
 app.post('/api/clinical/analyze', analyzePatient);
 app.post('/api/clinical/question', answerQuestion);
+
+// === RUTAS PARA CONSULTAS CLÍNICAS INTERACTIVAS ===
+app.use('/api/clinical/queries', clinicalQueryRoutes);
 
 // === RUTAS PARA PACIENTES ===
 
