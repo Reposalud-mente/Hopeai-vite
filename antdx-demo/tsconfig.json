@@ -10,7 +10,7 @@
       "checkJs": false,
       "esModuleInterop": true,
       "strict": false,
-      "noImplicitAny": false,
+      "noImplicitAny": true,
       "skipLibCheck": true,
       "forceConsistentCasingInFileNames": true
     },

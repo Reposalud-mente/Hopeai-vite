@@ -1,8 +1,9 @@
 import './App.css'
+import { PatientProvider } from './context/PatientContext'
 import PatientReviewPage from './components/PatientReviewPage'
+import ErrorManager from './components/ErrorManager'
 import { ConfigProvider, theme } from 'antd'
 import esES from 'antd/es/locale/es_ES'
-import { PatientProvider } from './context/PatientContext'
 
 function App() {
   return (
@@ -34,7 +35,10 @@ function App() {
       }}
     >
       <PatientProvider>
-        <PatientReviewPage />
+        <div className="app-container">
+          <PatientReviewPage />
+          <ErrorManager autoNotify={true} />
+        </div>
       </PatientProvider>
     </ConfigProvider>
   )

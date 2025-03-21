@@ -43,11 +43,11 @@ let currentUser = MOCK_USERS[0];
 /**
  * Inicia sesión con credenciales
  * @param {string} email - Correo electrónico
- * @param {string} password - Contraseña (no se valida en este entorno simulado)
+ * @param {string} _ - Contraseña (no se valida en este entorno simulado)
  * @returns {Promise<Object>} - Datos del usuario autenticado
  */
-export async function login(email, _password) {
-  return new Promise((resolve, reject) => {
+export async function login(email: string, _password: string) {
+  return new Promise<{user: typeof MOCK_USERS[0], token: string}>((resolve, reject) => {
     setTimeout(() => {
       const user = MOCK_USERS.find(u => u.email === email);
       if (user) {
@@ -81,7 +81,7 @@ export async function logout() {
  * @returns {Promise<Object>} - Datos del usuario actual
  */
 export async function getCurrentUser() {
-  return new Promise((resolve, reject) => {
+  return new Promise<typeof MOCK_USERS[0]>((resolve, reject) => {
     setTimeout(() => {
       if (currentUser) {
         resolve(currentUser);
@@ -97,7 +97,7 @@ export async function getCurrentUser() {
  * @returns {Promise<boolean>}
  */
 export async function isAuthenticated() {
-  return new Promise(resolve => {
+  return new Promise<boolean>(resolve => {
     setTimeout(() => {
       resolve(!!currentUser);
     }, 100);

@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { Patient, TestResult } from './models/patient.js';
 import { testConnection, sequelize } from './config.js';
+import { testAnalysis, analyzePatient, answerQuestion } from './controllers/clinicalAnalysisController.js';
 
 // Inicializar Express
 const app = express();
@@ -20,6 +21,11 @@ app.get('/api/health', async (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// === RUTAS PARA ANÁLISIS CLÍNICO ===
+app.get('/api/analysis', testAnalysis);
+app.post('/api/clinical/analyze', analyzePatient);
+app.post('/api/clinical/question', answerQuestion);
 
 // === RUTAS PARA PACIENTES ===
 

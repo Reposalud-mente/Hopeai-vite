@@ -6,11 +6,40 @@ import {
   SystemMessagePromptTemplate 
 } from "@langchain/core/prompts";
 import { StringOutputParser } from "@langchain/core/output_parsers";
-import { config } from '../api/aiClient';
+import dotenv from 'dotenv';
+
+// Cargar variables de entorno
+dotenv.config();
+
+// Configuración para DeepSeek
+const DEEPSEEK_API_BASE = process.env.DEEPSEEK_API_BASE || "https://api.deepseek.com";
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
+const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || "deepseek-chat";
+
+// Verificar que la API key esté configurada
+if (!DEEPSEEK_API_KEY) {
+  console.warn("⚠️ DEEPSEEK_API_KEY no está configurada en variables de entorno. La integración con IA no funcionará correctamente.");
+}
+
+// Exportar configuración para usar en otros módulos
+export const config = {
+  API_BASE: DEEPSEEK_API_BASE,
+  API_KEY: DEEPSEEK_API_KEY,
+  MODEL: DEEPSEEK_MODEL
+};
 
 // Definir tipo para el estado
-type AnalysisState = {
+export type AnalysisState = {
   patientInfo: string;
+  symptoms: string[];
+  dsmAnalysis: string[];
+  possibleDiagnoses: string[];
+  treatmentSuggestions: string[];
+  currentThinking: string;
+};
+
+// Definir tipo para el resultado de análisis clínico
+export type ClinicalAnalysisResult = {
   symptoms: string[];
   dsmAnalysis: string[];
   possibleDiagnoses: string[];
@@ -48,12 +77,12 @@ const State = Annotation.Root({
 
 // Creamos un modelo de lenguaje para usar en nuestro grafo
 const createLLM = () => {
-  // Utilizar configuración directa de nuestro aiClient
+  // Utilizar configuración de variables de entorno
   return new ChatOpenAI({
     temperature: 0,
-    modelName: config.MODEL || "deepseek-chat", // Usar modelo de DeepSeek
+    modelName: config.MODEL, // Usar modelo de DeepSeek
     apiKey: config.API_KEY,
-    streaming: true,
+    streaming: false, // En el backend no necesitamos streaming
     configuration: {
       baseURL: `${config.API_BASE}/v1`
     }
@@ -244,13 +273,23 @@ export const createClinicalAnalysisGraph = () => {
 };
 
 // Función para ejecutar el grafo completo
-export const runClinicalAnalysis = async (patientInfo: string) => {
-  const graph = createClinicalAnalysisGraph();
-  const result = await graph.invoke({ patientInfo });
-  return result;
+export const runClinicalAnalysis = async (patientInfo: string): Promise<ClinicalAnalysisResult> => {
+  try {
+    const graph = createClinicalAnalysisGraph();
+    const result = await graph.invoke({ patientInfo });
+    return result;
+  } catch (error) {
+    console.error("Error al ejecutar el grafo de análisis clínico:", error);
+    throw error;
+  }
 };
 
-// Función para responder a preguntas específicas
-export const answerClinicalQuestion = async (analysisState: AnalysisState, question: string) => {
-  return await answerQuestion(analysisState, question);
+// Función para responder a preguntas específicas usando el estado del análisis
+export const answerClinicalQuestion = async (state: AnalysisState, question: string): Promise<string> => {
+  try {
+    return await answerQuestion(state, question);
+  } catch (error) {
+    console.error("Error al responder pregunta clínica:", error);
+    throw error;
+  }
 }; 

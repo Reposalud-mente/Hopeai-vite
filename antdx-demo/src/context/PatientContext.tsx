@@ -1,22 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { message } from 'antd';
 import { getPatients, getPatientById, updateEvaluationDraft } from '../api/patients';
-
-// Define interfaces for our types
-export interface Patient {
-  id: number;
-  name: string;
-  status: string;
-  evaluationDate?: string;
-  psychologist?: string;
-  consultReason?: string;
-  evaluationDraft?: string;
-  testResults?: {
-    name: string;
-    date?: string;
-    results?: any;
-  }[];
-}
+import { Patient } from '../types/clinical-types';
+import { useError } from '../hooks/useError';
+import { ErrorSource } from './ErrorContext';
 
 // Define the shape of our context
 export interface PatientContextType {
@@ -48,20 +35,30 @@ export const PatientProvider: React.FC<{children: React.ReactNode}> = ({ childre
   const [currentPatient, setCurrentPatient] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { withErrorHandling } = useError();
 
   // Cargar la lista de pacientes
   const loadPatients = async () => {
     setLoading(true);
     setError(null);
-    try {
-      const data = await getPatients();
-      setPatients(data);
-    } catch (_err) {
-      setError('Error al cargar la lista de pacientes');
+    
+    const result = await withErrorHandling(
+      async () => {
+        const data = await getPatients();
+        setPatients(data);
+        return data;
+      },
+      'Error al cargar la lista de pacientes',
+      ErrorSource.API,
+      { component: 'PatientProvider' }
+    );
+
+    if (!result) {
+      setError('No se pudieron cargar los pacientes');
       message.error('No se pudieron cargar los pacientes');
-    } finally {
-      setLoading(false);
     }
+    
+    setLoading(false);
   };
 
   // Cargar un paciente específico
@@ -70,41 +67,60 @@ export const PatientProvider: React.FC<{children: React.ReactNode}> = ({ childre
     
     setLoading(true);
     setError(null);
-    try {
-      const data = await getPatientById(patientId);
-      setCurrentPatient(data);
-    } catch (_err) {
-      setError(`Error al cargar el paciente ${patientId}`);
+    
+    const result = await withErrorHandling(
+      async () => {
+        const data = await getPatientById(patientId);
+        setCurrentPatient(data);
+        return data;
+      },
+      `Error al cargar el paciente ${patientId}`,
+      ErrorSource.API,
+      { 
+        component: 'PatientProvider', 
+        patientId 
+      }
+    );
+
+    if (!result) {
+      setError(`No se pudo cargar la información del paciente ${patientId}`);
       message.error('No se pudo cargar la información del paciente');
-    } finally {
-      setLoading(false);
     }
+    
+    setLoading(false);
   };
 
   // Guardar el borrador de evaluación
-  const saveEvaluationDraft = async (patientId: number, draftText: string) => {
-    if (!patientId) return;
+  const saveEvaluationDraft = async (patientId: number, draftText: string): Promise<boolean> => {
+    if (!patientId) return false;
     
     setLoading(true);
     setError(null);
-    try {
-      const updatedPatient = await updateEvaluationDraft(patientId, draftText);
-      setCurrentPatient(updatedPatient);
-      
-      // Actualizar también en la lista
-      setPatients(prev => 
-        prev.map(p => p.id === patientId ? updatedPatient : p)
-      );
-      
-      message.success('Borrador guardado correctamente');
-      return true;
-    } catch (_err) {
-      setError('Error al guardar el borrador');
-      message.error('No se pudo guardar el borrador');
-      return false;
-    } finally {
-      setLoading(false);
-    }
+    
+    const result = await withErrorHandling(
+      async () => {
+        const updatedPatient = await updateEvaluationDraft(patientId, draftText);
+        setCurrentPatient(updatedPatient);
+        
+        // Actualizar también en la lista
+        setPatients(prev => 
+          prev.map(p => p.id === patientId ? updatedPatient : p)
+        );
+        
+        message.success('Borrador guardado correctamente');
+        return true;
+      },
+      'Error al guardar el borrador de evaluación',
+      ErrorSource.API,
+      { 
+        component: 'PatientProvider', 
+        patientId,
+        draftLength: draftText?.length 
+      }
+    );
+    
+    setLoading(false);
+    return result === true;
   };
   
   // Cargar pacientes al montar el componente

@@ -1,187 +1,116 @@
 /**
  * API de integración con DeepSeek para análisis clínico
  * 
- * Este módulo proporciona funciones para interactuar con la API de DeepSeek
+ * Este módulo centraliza y exporta las funciones principales para interactuar con la API de DeepSeek
  * utilizando el formato compatible con OpenAI.
  */
 
-// Configuración para el cliente de DeepSeek
-const DEEPSEEK_API_BASE = import.meta.env.VITE_DEEPSEEK_API_BASE || "https://api.deepseek.com";
-const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY;
-const DEEPSEEK_MODEL = import.meta.env.VITE_DEEPSEEK_MODEL || "deepseek-chat";
+// Importar servicios centralizados
+import { callAIAPI } from '../services/aiService';
 
-// Verificar que la API key esté configurada
-if (!DEEPSEEK_API_KEY) {
-  console.warn("⚠️ VITE_DEEPSEEK_API_KEY no está configurada. La integración con IA no funcionará correctamente.");
-}
+// Importar funciones de análisis clínico
+import { 
+  analyzePatientWithErrorHandling, 
+  chatWithAIWithErrorHandling 
+} from './clinicalAnalysis';
+
+// Import tipos
+import { 
+  PatientAnalysis, 
+  ChatResponse,
+  ErrorProcessor,
+  AIMessage 
+} from '../types/ai-types';
+import { withErrorHandling } from './aiClient';
 
 /**
- * Realiza una solicitud a la API de DeepSeek
- * @param {string} endpoint - El endpoint de la API
- * @param {Object} data - Los datos para enviar a la API
- * @returns {Promise<Object>} - La respuesta de la API
+ * Realiza un análisis clínico del paciente con manejo de errores
+ * @param {string} patientData - Datos del paciente a analizar
+ * @param {ErrorProcessor} errorProcessor - Procesador de errores personalizado (opcional)
+ * @returns {Promise<PatientAnalysis>} - Análisis completo del paciente
  */
-async function callDeepseekAPI(endpoint, data) {
+export const fetchAIAnalysisWithErrorHandling = async (
+  patientData: string, 
+  errorProcessor?: ErrorProcessor
+): Promise<PatientAnalysis> => {
+  return analyzePatientWithErrorHandling(patientData, errorProcessor);
+};
+
+/**
+ * Ejecuta una consulta sobre el asistente de IA con manejo de errores
+ * @param {string} prompt - El prompt a enviar al asistente
+ * @param {string} systemPrompt - El prompt del sistema (opcional)
+ * @param {ErrorProcessor} errorProcessor - Procesador de errores personalizado (opcional)
+ * @returns {Promise<string>} - La respuesta del asistente
+ */
+export const fetchAICompletionWithErrorHandling = async (
+  prompt: string,
+  systemPrompt?: string,
+  errorProcessor?: ErrorProcessor
+): Promise<string> => {
   try {
-    console.log(`Llamando a API: ${DEEPSEEK_API_BASE}${endpoint}`, data);
+    const messages: AIMessage[] = [];
     
-    const response = await fetch(`${DEEPSEEK_API_BASE}${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
-      },
-      body: JSON.stringify(data)
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorData;
-      try {
-        errorData = JSON.parse(errorText);
-      } catch {
-        errorData = { error: { message: errorText } };
-      }
-      console.error("Error response:", errorData);
-      throw new Error(`Error en API DeepSeek: ${errorData.error?.message || response.statusText}`);
+    // Añadir mensaje del sistema si existe
+    if (systemPrompt) {
+      messages.push({ role: 'system', content: systemPrompt });
     }
-
-    const responseData = await response.json();
-    console.log("API response:", responseData);
-    return responseData;
+    
+    // Añadir mensaje del usuario
+    messages.push({ role: 'user', content: prompt });
+    
+    const response = await callAIAPI({
+      model: 'deepseek-chat',
+      messages,
+      temperature: 0.7
+    });
+    
+    return response.choices[0].message.content;
   } catch (error) {
-    console.error("Error al llamar a DeepSeek API:", error);
+    // Procesar el error si se proporciona un procesador
+    if (errorProcessor && error instanceof Error) {
+      errorProcessor(error);
+    }
+    
+    // Re-lanzar el error para manejo en capas superiores
     throw error;
   }
-}
+};
 
 /**
- * Analiza los datos del paciente para generar diagnósticos y recomendaciones
- * @param {string} patientData - Los datos completos del paciente
- * @returns {Promise<Object>} - Análisis completo del paciente
+ * Genera un informe clínico con manejo de errores
+ * @param {string} patientData - Datos del paciente
+ * @param {ErrorProcessor} errorProcessor - Procesador de errores personalizado (opcional)
+ * @returns {Promise<string>} - Informe clínico generado
  */
-export async function deepseekAnalyzePatient(patientData) {
-  const systemPrompt = `
-Eres un psicólogo clínico especializado que proporciona análisis en formato JSON.
-Debes analizar los datos del paciente y proporcionar un análisis profesional.
-Tu respuesta DEBE ser un objeto JSON válido con la estructura específica que se indica a continuación.
-`;
-
-  const userPrompt = `
-Analiza los siguientes datos de paciente:
-
-DATOS DEL PACIENTE:
-${patientData}
-
-Tu respuesta debe ser un objeto JSON con exactamente las siguientes propiedades:
-{
-  "thoughtChain": [
-    {"title": "string", "description": "string", "status": "string"}
-  ],
-  "diagnoses": [
-    {"name": "string", "description": "string", "confidence": "string"}
-  ],
-  "recommendations": [
-    {"title": "string", "description": "string"}
-  ]
-}
-`;
-
-  try {
-    const response = await callDeepseekAPI('/chat/completions', {
-      model: DEEPSEEK_MODEL,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      temperature: 0.2,
-      response_format: { type: "json_object" }
-    });
-
-    // Extraer la respuesta JSON
-    const content = response.choices[0].message.content;
-    console.log("Content recibido:", content);
-    
-    // Parsear el JSON
-    const result = JSON.parse(content);
-    
-    return {
-      thoughtChain: result.thoughtChain || [],
-      diagnoses: result.diagnoses || [],
-      recommendations: result.recommendations || []
-    };
-  } catch (error) {
-    console.error("Error al procesar respuesta de análisis:", error);
-    // Proporcionar datos fallback en caso de error
-    return {
-      thoughtChain: [
-        {
-          title: "Error en el análisis",
-          description: `No se pudo procesar la respuesta del servicio de IA: ${error.message}`,
-          status: "error"
-        }
-      ],
-      diagnoses: [],
-      recommendations: []
-    };
-  }
-}
+export const generateClinicalReportWithErrorHandling = async (
+  patientData: string,
+  errorProcessor?: ErrorProcessor
+): Promise<string> => {
+  return withErrorHandling(async () => {
+    // Por ahora, esta función es un stub que retorna un mensaje de que la funcionalidad
+    // será implementada pronto. En el futuro, usará aiPrompts y clinicalAnalysis
+    return "Funcionalidad de generación de informes clínicos en desarrollo. Estará disponible en próximas actualizaciones.";
+  }, errorProcessor);
+};
 
 /**
- * Procesa una consulta específica sobre el paciente
- * @param {string} question - La pregunta del usuario
- * @param {string} patientData - Los datos del paciente
- * @param {Array} history - El historial de conversación
- * @returns {Promise<Object>} - La respuesta a la consulta
+ * Procesa una consulta sobre el paciente con manejo de errores
+ * @param {string} question - Pregunta del usuario
+ * @param {string} patientData - Datos del paciente
+ * @param {Array} history - Historial de conversación
+ * @param {ErrorProcessor} errorProcessor - Procesador de errores personalizado (opcional)
+ * @returns {Promise<ChatResponse>} - Respuesta a la consulta
  */
-export async function deepseekChatWithAI(question, patientData, history) {
-  // Convertir historial a formato compatible con DeepSeek/OpenAI
-  const formattedHistory = history.map(msg => ({
-    role: msg.type === 'sender' ? 'user' : 'assistant',
-    content: msg.content
-  }));
+export const chatWithPatientDataWithErrorHandling = async (
+  question: string,
+  patientData: string,
+  history: Array<{ type: string; content: string }>,
+  errorProcessor?: ErrorProcessor
+): Promise<ChatResponse> => {
+  return chatWithAIWithErrorHandling(question, patientData, history, errorProcessor);
+};
 
-  // Crear mensaje del sistema con contexto
-  const systemMessage = `
-Eres un asistente clínico especializado en psicología y psiquiatría.
-Estás ayudando a un profesional de la salud mental con un paciente.
-
-DATOS DEL PACIENTE:
-${patientData}
-
-Responde las preguntas de manera concisa y profesional basándote en los datos del paciente y el conocimiento clínico actual.
-`;
-
-  try {
-    // Preparar mensajes para la API
-    const messages = [
-      { role: 'system', content: systemMessage },
-      ...formattedHistory,
-      { role: 'user', content: question }
-    ];
-
-    // Realizar la llamada a la API
-    const response = await callDeepseekAPI('/chat/completions', {
-      model: DEEPSEEK_MODEL,
-      messages: messages,
-      temperature: 0.3
-    });
-
-    // Extraer la respuesta
-    const answer = response.choices[0].message.content;
-    
-    return {
-      answer,
-      // Otros datos que podrían actualizarse según la conversación
-      updatedDiagnoses: null,
-      updatedThoughtChain: null
-    };
-  } catch (error) {
-    console.error("Error en chat con IA:", error);
-    return {
-      answer: `Lo siento, no pude procesar tu pregunta. Error: ${error.message}`,
-      updatedDiagnoses: null,
-      updatedThoughtChain: null
-    };
-  }
-} 
+// Re-exportar funcionalidades para mantener compatibilidad con código existente
+export { analyzePatientWithErrorHandling as deepseekAnalyzePatient };
+export { chatWithAIWithErrorHandling as deepseekChatWithAI }; 

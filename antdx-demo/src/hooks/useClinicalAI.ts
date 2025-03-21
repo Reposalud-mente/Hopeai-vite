@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { deepseekAnalyzePatient, deepseekChatWithAI } from '../api/ai';
+import { fetchAIAnalysisWithErrorHandling, chatWithPatientDataWithErrorHandling } from '../api/ai';
 
 // Define interfaces for our data types
 interface ThoughtStep {
@@ -32,6 +32,18 @@ interface UseClinicalAIReturn {
 }
 
 /**
+ * Convierte un estado de análisis al formato interno del hook
+ * @param status - Estado original del análisis
+ * @returns Estado compatible con el componente
+ */
+const mapStatusToComponent = (status: string): 'wait' | 'processing' | 'finish' | 'error' => {
+  if (status === 'error') return 'error';
+  if (status === 'processing' || status === 'pending') return 'processing';
+  if (status === 'finish' || status === 'completed') return 'finish';
+  return 'wait';
+};
+
+/**
  * Hook personalizado para integrar el análisis clínico IA con nuestra interfaz
  * @param {string} patientInfo - Información del paciente para análisis
  * @returns {Object} - Estado y funciones del asistente clínico IA
@@ -60,17 +72,15 @@ export const useClinicalAI = (patientInfo: string): UseClinicalAIReturn => {
     setError(null);
     
     try {
-      // Ejecutamos el análisis a través de DeepSeek API
-      const result = await deepseekAnalyzePatient(patientInfo);
+      // Ejecutamos el análisis a través del servicio centralizado
+      const result = await fetchAIAnalysisWithErrorHandling(patientInfo);
       
       // Formateamos los pasos de razonamiento para el componente ThoughtChain
       if (result.thoughtChain && result.thoughtChain.length > 0) {
         setThoughtSteps(result.thoughtChain.map(step => ({
           title: step.title,
           description: step.description,
-          status: step.status === 'error' ? 'error' : 
-                 step.status === 'pending' ? 'processing' : 
-                 step.status === 'completed' ? 'finish' : 'wait',
+          status: mapStatusToComponent(step.status),
           icon: null // Los iconos se asignarán en el componente
         })));
       }
@@ -105,8 +115,8 @@ export const useClinicalAI = (patientInfo: string): UseClinicalAIReturn => {
         content: question
       }]);
       
-      // Obtenemos la respuesta a través de DeepSeek API
-      const response = await deepseekChatWithAI(
+      // Obtenemos la respuesta a través del servicio centralizado
+      const response = await chatWithPatientDataWithErrorHandling(
         question, 
         patientInfo, 
         chatHistory
@@ -131,9 +141,7 @@ export const useClinicalAI = (patientInfo: string): UseClinicalAIReturn => {
         setThoughtSteps(response.updatedThoughtChain.map(step => ({
           title: step.title,
           description: step.description,
-          status: step.status === 'error' ? 'error' : 
-                 step.status === 'pending' ? 'processing' : 
-                 step.status === 'completed' ? 'finish' : 'wait',
+          status: mapStatusToComponent(step.status),
           icon: null
         })));
       }

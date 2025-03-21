@@ -6,6 +6,7 @@
  */
 
 import axios from 'axios';
+import { Patient, TestResult } from '../types/clinical-types';
 
 // URL base para la API
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
@@ -22,7 +23,7 @@ const apiClient = axios.create({
  * Obtiene la lista de todos los pacientes
  * @returns {Promise<Array>} - Lista de pacientes
  */
-export async function getPatients() {
+export async function getPatients(): Promise<Patient[]> {
   try {
     const response = await apiClient.get('/patients');
     return response.data;
@@ -34,10 +35,10 @@ export async function getPatients() {
 
 /**
  * Obtiene los datos de un paciente específico
- * @param {string} id - ID del paciente
+ * @param {number} id - ID del paciente
  * @returns {Promise<Object>} - Datos del paciente
  */
-export async function getPatientById(id) {
+export async function getPatientById(id: number): Promise<Patient> {
   try {
     const response = await apiClient.get(`/patients/${id}`);
     return response.data;
@@ -49,11 +50,11 @@ export async function getPatientById(id) {
 
 /**
  * Actualiza los datos de un paciente
- * @param {string} id - ID del paciente
+ * @param {number} id - ID del paciente
  * @param {Object} data - Datos actualizados
  * @returns {Promise<Object>} - Paciente actualizado
  */
-export async function updatePatient(id, data) {
+export async function updatePatient(id: number, data: Partial<Patient>): Promise<Patient> {
   try {
     const response = await apiClient.put(`/patients/${id}`, data);
     return response.data;
@@ -65,11 +66,11 @@ export async function updatePatient(id, data) {
 
 /**
  * Actualiza el borrador de evaluación de un paciente
- * @param {string} id - ID del paciente
+ * @param {number} id - ID del paciente
  * @param {string} draft - Texto del borrador
  * @returns {Promise<Object>} - Paciente actualizado
  */
-export async function updateEvaluationDraft(id, draft) {
+export async function updateEvaluationDraft(id: number, draft: string): Promise<Patient> {
   try {
     const response = await apiClient.put(`/patients/${id}/evaluation-draft`, { draft });
     return response.data;
@@ -81,11 +82,11 @@ export async function updateEvaluationDraft(id, draft) {
 
 /**
  * Agrega un nuevo resultado de prueba psicológica
- * @param {string} patientId - ID del paciente
+ * @param {number} patientId - ID del paciente
  * @param {Object} testResult - Resultado de la prueba
  * @returns {Promise<Object>} - Resultado de prueba creado
  */
-export async function addTestResult(patientId, testResult) {
+export async function addTestResult(patientId: number, testResult: TestResult): Promise<TestResult> {
   try {
     const response = await apiClient.post(`/patients/${patientId}/test-results`, testResult);
     return response.data;
