@@ -1,9 +1,21 @@
 import './App.css'
 import { PatientProvider } from './context/PatientContext'
-import PatientReviewPage from './components/PatientReviewPage'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import ErrorManager from './components/ErrorManager'
 import { ConfigProvider, theme } from 'antd'
 import esES from 'antd/es/locale/es_ES'
+import React, { lazy } from 'react'
+import SuspenseWrapper from './components/SuspenseWrapper'
+
+// Componentes de diseño
+import AppLayout from './components/AppLayout'
+
+// Importación lazy de páginas principales
+const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+const PatientsListPage = lazy(() => import('./pages/PatientsListPage'))
+const AnalysisPage = lazy(() => import('./pages/AnalysisPage'))
+const PatientDetailsPage = lazy(() => import('./pages/PatientDetailsPage'))
+const NewPatientPage = lazy(() => import('./pages/NewPatientPage'))
 
 function App() {
   return (
@@ -36,7 +48,46 @@ function App() {
     >
       <PatientProvider>
         <div className="app-container">
-          <PatientReviewPage />
+          <Router>
+            <Routes>
+              <Route path="/" element={
+                <AppLayout>
+                  <SuspenseWrapper>
+                    <DashboardPage />
+                  </SuspenseWrapper>
+                </AppLayout>
+              } />
+              <Route path="/pacientes" element={
+                <AppLayout>
+                  <SuspenseWrapper>
+                    <PatientsListPage />
+                  </SuspenseWrapper>
+                </AppLayout>
+              } />
+              <Route path="/pacientes/nuevo" element={
+                <AppLayout>
+                  <SuspenseWrapper>
+                    <NewPatientPage />
+                  </SuspenseWrapper>
+                </AppLayout>
+              } />
+              <Route path="/pacientes/:id" element={
+                <AppLayout>
+                  <SuspenseWrapper>
+                    <PatientDetailsPage />
+                  </SuspenseWrapper>
+                </AppLayout>
+              } />
+              <Route path="/analisis" element={
+                <AppLayout>
+                  <SuspenseWrapper>
+                    <AnalysisPage />
+                  </SuspenseWrapper>
+                </AppLayout>
+              } />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Router>
           <ErrorManager autoNotify={true} />
         </div>
       </PatientProvider>

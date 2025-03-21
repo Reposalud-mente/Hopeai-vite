@@ -69,19 +69,22 @@ export interface ThoughtStep {
  */
 export interface Diagnosis {
   name: string;
-  description: string;
-  confidence: string;
+  description?: string;
+  confidence?: string;
+  code?: string;
+  probability?: number;
 }
 
 /**
  * Estructura para recomendación mostrada en la UI
  */
 export interface Recommendation {
-  id: string;
-  title: string;
-  description: string;
-  type: 'tratamiento' | 'evaluación' | 'seguimiento';
-  priority: 'alta' | 'media' | 'baja';
+  id?: string;
+  title?: string;
+  description?: string;
+  type?: 'tratamiento' | 'evaluación' | 'seguimiento';
+  priority?: 'alta' | 'media' | 'baja';
+  text?: string;
 }
 
 /**

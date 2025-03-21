@@ -2,7 +2,8 @@ import React from 'react';
 import { Typography, Space, Tag, Avatar, Flex, Button, Tooltip } from 'antd';
 import { 
   UserOutlined, 
-  ClockCircleOutlined 
+  ClockCircleOutlined,
+  RobotOutlined
 } from '@ant-design/icons';
 import { Patient } from '../types/clinical-types'
 
@@ -10,10 +11,12 @@ const { Text, Title } = Typography;
 
 interface PatientHeaderProps {
   currentPatient: Patient | null;
+  onOpenAssistant?: () => void;
 }
 
 const PatientHeader: React.FC<PatientHeaderProps> = ({ 
-  currentPatient
+  currentPatient,
+  onOpenAssistant
 }) => {
   if (!currentPatient) {
     return (
@@ -58,6 +61,9 @@ const PatientHeader: React.FC<PatientHeaderProps> = ({
           </Tooltip>
           <Tooltip title="Ver historial del paciente">
             <Button>Ver Historial</Button>
+          </Tooltip>
+          <Tooltip title="Consultar asistente IA">
+            <Button icon={<RobotOutlined />} onClick={onOpenAssistant}>Asistente IA</Button>
           </Tooltip>
         </Flex>
       </Flex>
