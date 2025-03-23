@@ -1,4 +1,4 @@
-import React from 'react';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { BrowserRouter } from 'react-router-dom';
@@ -6,30 +6,41 @@ import PatientList from '../../components/PatientList';
 import { Patient } from '../../types/clinical-types';
 
 // Mock de useNavigate
-const mockNavigate = jest.fn();
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useNavigate: () => mockNavigate
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate
+  };
+});
+
+// Mock del servicio de pacientes
+vi.mock('../../api/patientApi', () => ({
+  getPatients: vi.fn().mockResolvedValue([
+    { id: 1, name: 'Juan Pérez', age: 45, lastVisit: '2023-05-10' },
+    { id: 2, name: 'María García', age: 32, lastVisit: '2023-06-15' }
+  ])
 }));
 
 describe('PatientList Component', () => {
   const mockPatients: Patient[] = [
     { 
-      id: '1', 
+      id: 1, 
       name: 'Juan Pérez', 
       age: 35, 
       evaluationDate: '2023-03-15', 
       status: 'active'
     },
     { 
-      id: '2', 
+      id: 2, 
       name: 'María González', 
       age: 42, 
       evaluationDate: '2023-02-20', 
       status: 'completed'
     },
     { 
-      id: '3', 
+      id: 3, 
       name: 'Carlos Rodríguez', 
       age: 28, 
       evaluationDate: '2023-04-01', 
@@ -49,7 +60,7 @@ describe('PatientList Component', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test('renders patient list with correct data', () => {

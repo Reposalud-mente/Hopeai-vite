@@ -7,10 +7,10 @@ import useLoadingState from '../hooks/useLoadingState';
 import PatientForm from '../components/PatientForm';
 import PatientHistory from '../components/PatientHistory';
 import LoadingFeedback from '../components/LoadingFeedback';
+import UserFlowOptimizer from '../components/UserFlowOptimizer';
 import { Patient, ClinicalEvaluation } from '../types/clinical-types';
 
 const { Title } = Typography;
-const { TabPane } = Tabs;
 
 // Datos mock para pruebas (serán reemplazados por datos reales de la API)
 const mockEvaluations: ClinicalEvaluation[] = [
@@ -20,8 +20,15 @@ const mockEvaluations: ClinicalEvaluation[] = [
     date: '2023-04-10',
     psychologist: 'Dr. Martínez',
     content: 'Paciente presenta síntomas de ansiedad moderada. Se recomienda terapia cognitivo-conductual.',
-    diagnoses: [{ name: 'Trastorno de ansiedad', code: 'F41.1', probability: 0.8 }],
-    recommendations: [{ text: 'Terapia cognitivo-conductual semanal', priority: 'alta' }],
+    diagnoses: [{ 
+      name: 'Trastorno de ansiedad', 
+      description: 'Trastorno caracterizado por ansiedad y preocupación excesivas',
+      confidence: 'alta' 
+    }],
+    recommendations: [{ 
+      text: 'Terapia cognitivo-conductual semanal', 
+      priority: 'alta' 
+    }],
   },
   {
     id: 102,
@@ -29,8 +36,15 @@ const mockEvaluations: ClinicalEvaluation[] = [
     date: '2023-03-15',
     psychologist: 'Dr. Martínez',
     content: 'Evaluación inicial. Paciente refiere dificultades para dormir y preocupaciones constantes.',
-    diagnoses: [{ name: 'Insomnio', code: 'F51.0', probability: 0.7 }],
-    recommendations: [{ text: 'Higiene del sueño', priority: 'media' }],
+    diagnoses: [{ 
+      name: 'Insomnio', 
+      description: 'Trastorno del sueño caracterizado por dificultad para dormir',
+      confidence: 'media'
+    }],
+    recommendations: [{ 
+      text: 'Higiene del sueño', 
+      priority: 'media' 
+    }],
   },
 ];
 
@@ -58,7 +72,7 @@ const PatientDetailsPage: React.FC = () => {
     messageLoading: 'Cargando información del paciente...',
     messageSuccess: 'Información del paciente cargada',
     messageError: 'Error al cargar la información del paciente',
-    showNotification: false // Reducimos notificaciones innecesarias
+    showNotification: false // Desactivar completamente las notificaciones
   });
 
   // Estado de carga para guardar los datos del paciente
@@ -137,12 +151,12 @@ const PatientDetailsPage: React.FC = () => {
     } catch (error) {
       console.error('Error cargando datos del paciente:', error);
     }
-  }, [id, getCachedPatient, cachePatient, isPatientCached, patientLoadingState]);
+  }, [id, isPatientCached, getCachedPatient, cachePatient]);
 
-  // Cargar datos solo una vez al montar el componente
+  // Cargar datos solo una vez al montar el componente o cuando cambie el ID
   useEffect(() => {
     loadPatient();
-  }, [loadPatient]);
+  }, [id, loadPatient]);
 
   // Guardar cambios del paciente
   const handleSavePatient = useCallback(async (updatedPatient: Patient) => {
@@ -267,6 +281,15 @@ const PatientDetailsPage: React.FC = () => {
         </Space>
       </div>
 
+      {/* Añadir UserFlowOptimizer */}
+      {patient && (
+        <UserFlowOptimizer 
+          currentView="details" 
+          patient={patient} 
+          previousPath="/pacientes"
+        />
+      )}
+
       {editMode ? (
         <Card>
           <PatientForm 
@@ -281,32 +304,35 @@ const PatientDetailsPage: React.FC = () => {
           activeKey={activeTab} 
           onChange={setActiveTab}
           style={{ marginTop: 16 }}
-        >
-          <TabPane 
-            tab={<span><EditOutlined /> Información</span>}
-            key="info"
-          >
-            <Card>
-              <PatientForm 
-                patient={patient} 
-                onSave={() => {}} 
-                onCancel={() => {}}
-                isLoading={false}
-                disabled={true}
-              />
-            </Card>
-          </TabPane>
-          <TabPane 
-            tab={<span><HistoryOutlined /> Historial Completo</span>}
-            key="history"
-          >
-            <PatientHistory 
-              patient={patient} 
-              evaluations={evaluations}
-              isLoading={patientLoadingState.isLoading}
-            />
-          </TabPane>
-        </Tabs>
+          items={[
+            {
+              key: 'info',
+              label: <span><EditOutlined /> Información</span>,
+              children: (
+                <Card>
+                  <PatientForm 
+                    patient={patient} 
+                    onSave={() => {}} 
+                    onCancel={() => {}}
+                    isLoading={false}
+                    disabled={true}
+                  />
+                </Card>
+              )
+            },
+            {
+              key: 'history',
+              label: <span><HistoryOutlined /> Historial Completo</span>,
+              children: (
+                <PatientHistory 
+                  patient={patient} 
+                  evaluations={evaluations}
+                  isLoading={patientLoadingState.isLoading}
+                />
+              )
+            }
+          ]}
+        />
       )}
     </div>
   );

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { ClinicalQueryController } from '../controllers/ClinicalQueryController';
+import { ClinicalQueryController, provideFeedback } from '../controllers/ClinicalQueryController';
 
 const router = Router();
 const clinicalQueryController = new ClinicalQueryController();
@@ -12,5 +12,6 @@ router.put('/:id', clinicalQueryController.updateQuery.bind(clinicalQueryControl
 router.delete('/:id', clinicalQueryController.deleteQuery.bind(clinicalQueryController));
 router.patch('/:id/favorite', clinicalQueryController.toggleFavorite.bind(clinicalQueryController));
 router.post('/:id/process', clinicalQueryController.processQuery.bind(clinicalQueryController));
+router.post('/:queryId/feedback', provideFeedback);
 
 export default router; 

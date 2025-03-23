@@ -25,6 +25,15 @@ const sequelize = new Sequelize({
   }
 });
 
+// Configuración para la API de DeepSeek
+const deepSeekConfig = {
+  apiKey: process.env.DEEPSEEK_API_KEY || 'sk-key',
+  apiUrl: process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com/v1',
+  model: process.env.DEEPSEEK_MODEL || 'deepseek-chat',
+  timeout: process.env.DEEPSEEK_TIMEOUT ? parseInt(process.env.DEEPSEEK_TIMEOUT, 10) : 60000,
+  maxTokens: process.env.DEEPSEEK_MAX_TOKENS ? parseInt(process.env.DEEPSEEK_MAX_TOKENS, 10) : 2048
+};
+
 // Función para probar la conexión
 const testConnection = async () => {
   try {
@@ -35,6 +44,14 @@ const testConnection = async () => {
     console.error('❌ Error al conectar con la base de datos:', error);
     return false;
   }
+};
+
+// Configuración general de la aplicación
+export const config = {
+  port: process.env.PORT ? parseInt(process.env.PORT, 10) : 3000,
+  jwtSecret: process.env.JWT_SECRET || 'secreto-desarrollo',
+  environment: process.env.NODE_ENV || 'development',
+  deepSeek: deepSeekConfig
 };
 
 export { sequelize, testConnection }; 

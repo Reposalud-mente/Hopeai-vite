@@ -1,5 +1,5 @@
 import { DataTypes } from 'sequelize';
-import { sequelize } from '../config.js';
+import { sequelize } from '../config';
 import { Patient } from './patient';
 
 // Modelo para consultas clínicas interactivas
@@ -40,6 +40,28 @@ const ClinicalQuery = sequelize.define('ClinicalQuery', {
   tags: {
     type: DataTypes.ARRAY(DataTypes.STRING),
     allowNull: true
+  },
+  // Campos para el sistema de retroalimentación
+  feedbackRating: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Calificación de la respuesta (1-5)'
+  },
+  feedbackComment: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Comentario de retroalimentación'
+  },
+  feedbackTags: {
+    type: DataTypes.ARRAY(DataTypes.STRING),
+    allowNull: true,
+    comment: 'Etiquetas de retroalimentación (útil, precisa, etc.)'
+  },
+  hasFeedback: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    comment: 'Indica si se ha proporcionado retroalimentación'
   },
   patientId: {
     type: DataTypes.STRING,

@@ -24,6 +24,7 @@ export interface ErrorData {
   source: ErrorSource;
   timestamp: Date;
   stack?: string;
+  componentStack?: string;
   context?: Record<string, unknown>;
   handled: boolean;
   originalError?: unknown;

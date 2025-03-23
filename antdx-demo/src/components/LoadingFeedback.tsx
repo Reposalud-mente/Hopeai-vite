@@ -76,7 +76,12 @@ const LoadingFeedback: React.FC<LoadingFeedbackProps> = ({
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: '20px 0' }}>
-        <Spin indicator={antIcon} tip={loadingText} />
+        <div className="loading-container" style={{ padding: '30px' }}>
+          <Spin indicator={antIcon}>
+            <div style={{ padding: '30px', textAlign: 'center', opacity: 0 }}>{loadingText}</div>
+          </Spin>
+          <div style={{ marginTop: '10px', textAlign: 'center' }}>{loadingText}</div>
+        </div>
       </div>
     );
   }

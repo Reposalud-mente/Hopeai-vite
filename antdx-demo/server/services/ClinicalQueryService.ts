@@ -2,6 +2,7 @@ import OpenAI from 'openai';
 import { Patient } from '../models/patient';
 import { ClinicalQuery } from '../models/clinicalQuery';
 import { ClinicalReference } from '../../src/types/ClinicalQuery';
+import { buildEnrichedPatientContext, contextToText } from '../ai/contextBuilder';
 
 /**
  * Interfaz para respuestas IA
@@ -16,19 +17,25 @@ interface AIResponse {
   treatmentSuggestions?: string[];
 }
 
+// Modelado de datos (usado en typescript para documentación)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface TestResult {
   name: string;
   score?: string | number;
   interpretation?: string;
+  getDataValue: (key: string) => string | number | undefined;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface PatientQueryData {
   id: number;
   question: string;
   answer: string;
   createdAt: Date;
+  getDataValue: (key: string) => string | number | Date | boolean | undefined;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface PatientData {
   name?: string;
   age?: number | string;
@@ -36,7 +43,7 @@ interface PatientData {
   testResults?: TestResult[];
   evaluationDraft?: string;
   clinicalQueries?: PatientQueryData[];
-  getDataValue: (key: string) => string | number | undefined;
+  getDataValue: (key: string) => string | number | Date | boolean | TestResult[] | PatientQueryData[] | undefined;
 }
 
 /**
@@ -57,6 +64,64 @@ export class ClinicalQueryService {
    * Procesa una consulta clínica y obtiene respuesta de la IA
    */
   async processQuery(queryId: number): Promise<typeof ClinicalQuery.prototype | null> {
+    let query: typeof ClinicalQuery.prototype | null = null;
+    
+    try {
+      // Obtener la consulta
+      query = await ClinicalQuery.findByPk(queryId);
+      if (!query) {
+        throw new Error(`Consulta con ID ${queryId} no encontrada`);
+      }
+
+      // Obtener el paciente
+      const patientId = query.getDataValue('patientId') as string;
+      const patient = await Patient.findByPk(patientId);
+      if (!patient) {
+        throw new Error(`Paciente no encontrado para la consulta ${queryId}`);
+      }
+
+      // Construir contexto enriquecido del paciente
+      const enrichedContext = await buildEnrichedPatientContext(patientId);
+      const patientContext = contextToText(enrichedContext);
+
+      // Enviar consulta a la IA
+      const aiResponse = await this.sendToAI(query.getDataValue('question') as string, patientContext);
+
+      // Actualizar la consulta con la respuesta
+      await query.update({
+        answer: aiResponse.mainAnswer,
+        responseJson: aiResponse,
+        confidenceScore: aiResponse.confidenceScore,
+        references: aiResponse.references
+      });
+
+      return query;
+    } catch (error) {
+      console.error('Error al procesar consulta clínica:', error);
+      
+      // Si hay una consulta válida, actualizar con respuesta de error
+      if (query) {
+        await query.update({
+          answer: 'No se pudo procesar la consulta. Por favor, inténtelo de nuevo más tarde.',
+          responseJson: {
+            mainAnswer: 'Error al procesar la consulta',
+            reasoning: 'Se produjo un error durante el procesamiento',
+            confidenceScore: 0,
+            references: []
+          },
+          confidenceScore: 0
+        });
+      }
+      
+      return null;
+    }
+  }
+
+  /**
+   * Método legado para compatibilidad - Procesa una consulta con el método original
+   * Útil como fallback si el nuevo flujo falla
+   */
+  async processQueryLegacy(queryId: number): Promise<typeof ClinicalQuery.prototype | null> {
     try {
       // Obtener la consulta
       const query = await ClinicalQuery.findByPk(queryId);
@@ -73,7 +138,7 @@ export class ClinicalQueryService {
       }
 
       // Construir contexto del paciente
-      const patientContext = this.buildPatientContext(patient);
+      const patientContext = this.buildPatientContext(patient, queryId);
 
       // Enviar consulta a la IA
       const aiResponse = await this.sendToAI(query.getDataValue('question'), patientContext);
@@ -88,46 +153,61 @@ export class ClinicalQueryService {
 
       return query;
     } catch (error) {
-      console.error('Error al procesar consulta clínica:', error);
+      console.error('Error al procesar consulta clínica (método legado):', error);
       return null;
     }
   }
 
   /**
-   * Construye el contexto del paciente para la IA
+   * Construye el contexto del paciente para la IA (método legado)
+   * @param patient Objeto de paciente con datos y métodos getDataValue
+   * @param queryId ID opcional de la consulta actual para excluirla del historial
    */
-  private buildPatientContext(patient: PatientData): string {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private buildPatientContext(patient: any, queryId?: number): string {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let context = `
-Nombre: ${patient.name || 'No especificado'}
-Edad: ${patient.age || 'No especificada'}
-Motivo de consulta: ${patient.consultReason || 'No especificado'}
+Nombre: ${patient.getDataValue('name') || 'No especificado'}
+Edad: ${patient.getDataValue('age') || 'No especificada'}
+Motivo de consulta: ${patient.getDataValue('consultReason') || 'No especificado'}
 `;
 
     // Añadir resultados de pruebas si existen
-    if (patient.testResults && patient.testResults.length > 0) {
+    const testResults = patient.getDataValue('testResults');
+    if (testResults && Array.isArray(testResults) && testResults.length > 0) {
       context += '\nResultados de evaluaciones:\n';
-      patient.testResults.forEach((test: TestResult) => {
-        context += `- ${test.name}: ${test.score || 'N/A'} (${test.interpretation || 'Sin interpretación'})\n`;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      testResults.forEach((test: any) => {
+        context += `- ${test.getDataValue('name')}: ${test.getDataValue('score') || 'N/A'} (${test.getDataValue('interpretation') || 'Sin interpretación'})\n`;
       });
     }
 
     // Añadir borrador de evaluación si existe
-    if (patient.evaluationDraft) {
-      context += `\nNotas de evaluación:\n${patient.evaluationDraft}\n`;
+    if (patient.getDataValue('evaluationDraft')) {
+      context += `\nNotas de evaluación:\n${patient.getDataValue('evaluationDraft')}\n`;
     }
 
     // Añadir historial de consultas previas (máximo 3)
-    if (patient.clinicalQueries && patient.clinicalQueries.length > 0) {
-      const previousQueries = patient.clinicalQueries
-        .filter((q: PatientQueryData) => q.answer && q.id !== q.id)
-        .sort((a: PatientQueryData, b: PatientQueryData) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    const clinicalQueries = patient.getDataValue('clinicalQueries');
+    if (clinicalQueries && Array.isArray(clinicalQueries) && clinicalQueries.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const previousQueries = clinicalQueries
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .filter((q: any) => q.getDataValue('answer') && q.getDataValue('id') !== queryId)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .sort((a: any, b: any) => {
+          const dateA = new Date(a.getDataValue('createdAt'));
+          const dateB = new Date(b.getDataValue('createdAt'));
+          return dateB.getTime() - dateA.getTime();
+        })
         .slice(0, 3);
 
       if (previousQueries.length > 0) {
         context += '\nConsultas clínicas previas:\n';
-        previousQueries.forEach((q: PatientQueryData) => {
-          context += `- Pregunta: ${q.question}\n`;
-          context += `  Respuesta: ${q.answer.substring(0, 150)}...\n`;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        previousQueries.forEach((q: any) => {
+          context += `- Pregunta: ${q.getDataValue('question')}\n`;
+          context += `  Respuesta: ${q.getDataValue('answer').substring(0, 150)}...\n`;
         });
       }
     }
@@ -139,8 +219,7 @@ Motivo de consulta: ${patient.consultReason || 'No especificado'}
    * Envía la consulta a la IA y procesa la respuesta
    */
   private async sendToAI(question: string, patientContext: string): Promise<AIResponse> {
-    try {
-      const systemPrompt = `Eres un asistente de IA especializado en psicología clínica que ayuda a profesionales de salud mental.
+    const systemPrompt = `Eres un asistente de IA especializado en psicología clínica que ayuda a profesionales de salud mental.
 Tus respuestas deben:
 1. Basarse en evidencia científica y criterios diagnósticos DSM-5/CIE-11
 2. Ser claras, objetivas y sin juicios de valor
@@ -152,7 +231,7 @@ Tus respuestas deben:
 
 IMPORTANTE: Siempre aclara que tus respuestas son orientativas y no reemplazan el juicio clínico profesional.`;
 
-      const userPrompt = `
+    const userPrompt = `
 CONTEXTO DEL PACIENTE:
 ${patientContext}
 
@@ -176,6 +255,7 @@ Estructura tu respuesta en formato JSON con los siguientes campos:
   "treatmentSuggestions": ["Sugerencia 1", "Sugerencia 2"] // Opcional
 }`;
 
+    try {
       const response = await this.openai.chat.completions.create({
         model: process.env.AI_MODEL || 'deepseek-chat',
         messages: [
@@ -195,53 +275,17 @@ Estructura tu respuesta en formato JSON con los siguientes campos:
       }
 
       // Parsear el JSON
-      let parsedResponse: AIResponse;
-      try {
-        parsedResponse = JSON.parse(jsonMatch[0]) as AIResponse;
-        
-        // Validar estructura mínima
-        if (!parsedResponse.mainAnswer || !parsedResponse.reasoning) {
-          throw new Error('Respuesta incompleta');
-        }
-        
-        // Asegurarse de que hay referencias
-        if (!parsedResponse.references || !Array.isArray(parsedResponse.references)) {
-          parsedResponse.references = [];
-        }
-        
-        // Asegurarse de que hay un nivel de confianza
-        if (typeof parsedResponse.confidenceScore !== 'number') {
-          parsedResponse.confidenceScore = 0.5; // Valor predeterminado
-        }
-      } catch (error) {
-        console.error('Error al parsear respuesta JSON:', error, 'Respuesta:', content);
-        
-        // Crear una respuesta de fallback
-        parsedResponse = {
-          mainAnswer: "No se pudo procesar la respuesta en formato estructurado. La respuesta original fue: " + content.substring(0, 500),
-          reasoning: "Error al procesar el razonamiento.",
-          confidenceScore: 0.3,
-          references: [{
-            source: "Error",
-            citation: "No se pudieron extraer referencias."
-          }]
-        };
+      const parsedResponse = JSON.parse(jsonMatch[0]) as AIResponse;
+      
+      // Validar campos requeridos
+      if (!parsedResponse.mainAnswer || !parsedResponse.reasoning || parsedResponse.confidenceScore === undefined) {
+        throw new Error('Respuesta de IA incompleta o mal formateada');
       }
 
       return parsedResponse;
     } catch (error) {
-      console.error('Error al comunicarse con la IA:', error);
-      
-      // Devolver respuesta de error formateada
-      return {
-        mainAnswer: "Lo siento, hubo un error al procesar esta consulta. Por favor, inténtelo de nuevo más tarde.",
-        reasoning: "Error en la comunicación con el sistema de IA.",
-        confidenceScore: 0,
-        references: [{
-          source: "Error del sistema",
-          citation: "No se pudo obtener una respuesta del sistema de IA."
-        }]
-      };
+      console.error('Error al procesar respuesta de IA:', error);
+      throw error;
     }
   }
 } 

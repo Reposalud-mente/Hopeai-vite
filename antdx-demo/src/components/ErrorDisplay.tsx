@@ -6,7 +6,8 @@ import {
   WarningOutlined, 
   InfoCircleOutlined, 
   ExclamationCircleOutlined,
-  BugOutlined
+  BugOutlined,
+  ReloadOutlined
 } from '@ant-design/icons';
 
 const { Text, Paragraph } = Typography;
@@ -26,6 +27,45 @@ export const InlineError: React.FC<{
       showIcon
       closable={!!onClose}
       onClose={onClose}
+    />
+  );
+};
+
+// Componente para mostrar un error con la opción de reintentar
+export const RetryableError: React.FC<{
+  errorMessage: string;
+  onRetry: () => void;
+  isRetrying?: boolean;
+  retryText?: string;
+  severity?: ErrorSeverity;
+}> = ({ 
+  errorMessage, 
+  onRetry, 
+  isRetrying = false, 
+  retryText = "Reintentar", 
+  severity = ErrorSeverity.ERROR 
+}) => {
+  const alertType = getAlertTypeFromSeverity(severity);
+  
+  return (
+    <Alert
+      message={getSeverityTitle(severity)}
+      description={
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Text>{errorMessage}</Text>
+          <Button 
+            type="primary" 
+            icon={<ReloadOutlined />} 
+            onClick={onRetry} 
+            loading={isRetrying}
+            size="small"
+          >
+            {isRetrying ? "Reintentando..." : retryText}
+          </Button>
+        </Space>
+      }
+      type={alertType}
+      showIcon
     />
   );
 };
@@ -120,14 +160,14 @@ export const ErrorLogDrawer: React.FC<{
                     </Paragraph>
                   </Descriptions.Item>
                   
-                  {error.componentStack && (
+                  {error.context && error.context.componentStack && (
                     <Descriptions.Item label="Componentes">
                       <Paragraph
                         ellipsis={{ rows: 3, expandable: true, symbol: 'más' }}
                         style={{ maxWidth: '100%' }}
                       >
                         <pre style={{ whiteSpace: 'pre-wrap', fontSize: '12px' }}>
-                          {error.componentStack}
+                          {String(error.context.componentStack)}
                         </pre>
                       </Paragraph>
                     </Descriptions.Item>
@@ -252,13 +292,14 @@ function getSeverityIcon(severity: ErrorSeverity): React.ReactNode {
 
 function getSourceLabel(source: ErrorSource): string {
   switch (source) {
-    case ErrorSource.UI:
-      return 'Interfaz';
     case ErrorSource.API:
       return 'API';
+    case ErrorSource.UI:
+      return 'Interfaz de Usuario';
     case ErrorSource.AI:
-      return 'IA';
+      return 'IA Clínica';
     case ErrorSource.UNKNOWN:
+      return 'Desconocido';
     default:
       return 'Desconocido';
   }

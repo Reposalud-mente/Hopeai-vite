@@ -17,18 +17,20 @@ export interface ClinicalResponseJson {
 }
 
 export interface ClinicalQuery {
-  id?: number;
+  id: number;
   question: string;
-  answer?: string;
-  responseJson?: ClinicalResponseJson;
-  confidenceScore?: number;
-  references?: ClinicalReference[];
+  answer: string;
+  responseJson: ClinicalResponseJson | null;
+  confidenceScore: number | null;
+  createdAt: Date;
   isFavorite: boolean;
-  tags?: string[];
   patientId: string;
-  createdBy?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
+  tags?: string[];
+  // Campos para el sistema de retroalimentación
+  feedbackRating?: number;
+  feedbackComment?: string;
+  feedbackTags?: string[];
+  hasFeedback?: boolean;
 }
 
 // Interfaz para peticiones de creación de consultas

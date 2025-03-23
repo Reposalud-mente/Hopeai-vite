@@ -1,6 +1,7 @@
 import { notification, message } from 'antd';
 import { ArgsProps } from 'antd/es/notification';
 import { ReactNode } from 'react';
+import type { MessageInstance } from 'antd/es/message/interface';
 
 // Tipos de notificación
 export type NotificationType = 'success' | 'info' | 'warning' | 'error';
@@ -26,6 +27,9 @@ interface ThrottleControl {
   minInterval: number;
 }
 
+// Variable para almacenar la instancia del mensaje
+let messageInstance: MessageInstance | typeof message = message;
+
 /**
  * Servicio unificado de notificaciones para toda la aplicación
  * Proporciona una interfaz consistente para mostrar feedback al usuario
@@ -35,6 +39,11 @@ class NotificationService {
     lastShown: {},
     minInterval: 500, // mínimo 500ms entre notificaciones del mismo tipo
   };
+
+  // Método para inicializar con la instancia de App.message
+  public init(instance: MessageInstance | typeof message): void {
+    messageInstance = instance;
+  }
 
   // Verificar si debe mostrar una notificación (evitar exceso)
   private shouldShow(key: string): boolean {
@@ -93,20 +102,19 @@ class NotificationService {
     content: ReactNode,
     options: MessageOptions = {}
   ): void {
-    const { duration = 3, key, onClick } = options;
+    const { duration = 3, key } = options;
     
     // Clave para throttling
     const throttleKey = key || `toast-${type}-${String(content)}`;
     if (!this.shouldShow(throttleKey)) return;
 
-    // Programamos el toast en la siguiente iteración del event loop
+    // Utilizamos el mensaje dinámico
     setTimeout(() => {
-      message[type]({
-        content,
-        duration,
-        key,
-        onClick
-      });
+      if (key) {
+        messageInstance[type]({ content, key, duration });
+      } else {
+        messageInstance[type](content, duration);
+      }
     }, 0);
   }
 
@@ -119,11 +127,7 @@ class NotificationService {
     if (!this.shouldShow(`loading-${key}`)) return;
     
     setTimeout(() => {
-      message.loading({
-        content,
-        duration: 0, // Persistente hasta que se actualice
-        key
-      });
+      messageInstance.loading({ content, duration: 0, key });
     }, 0);
   }
 
@@ -141,7 +145,7 @@ class NotificationService {
     duration: number = 3
   ): void {
     setTimeout(() => {
-      message[type]({ content, key, duration });
+      messageInstance[type]({ content, key, duration });
     }, 0);
   }
 

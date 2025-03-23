@@ -14,6 +14,7 @@ interface PatientFormProps {
   onCancel: () => void;
   isLoading?: boolean;
   disabled?: boolean;
+  mode?: 'create' | 'edit' | 'view';
 }
 
 interface PatientFormValues {
@@ -35,9 +36,10 @@ const PatientForm: React.FC<PatientFormProps> = ({
   onCancel,
   isLoading = false,
   disabled = false,
+  mode = 'create',
 }) => {
   const [form] = Form.useForm();
-  const isEditing = !!patient?.id;
+  const isEditing = mode === 'edit';
 
   // Reiniciar el formulario cuando cambia el paciente (memoizado)
   useEffect(() => {
@@ -80,9 +82,11 @@ const PatientForm: React.FC<PatientFormProps> = ({
       layout="vertical"
       onFinish={handleSubmit}
       initialValues={initialValues}
-      disabled={disabled || isLoading}
+      disabled={disabled || isLoading || mode === 'view'}
     >
-      <Title level={3}>{isEditing ? 'Editar Paciente' : 'Nuevo Paciente'}</Title>
+      <Title level={3}>
+        {mode === 'edit' ? 'Editar Paciente' : mode === 'create' ? 'Nuevo Paciente' : 'Detalles del Paciente'}
+      </Title>
       
       <Row gutter={16}>
         <Col span={24}>
@@ -167,7 +171,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
         </Col>
       </Row>
 
-      {!disabled && (
+      {mode !== 'view' && (
         <Form.Item>
           <Space>
             <Button

@@ -1,0 +1,155 @@
+scalar Time
+
+type HealthStatus {
+  status: String!
+  database: String!
+  timestamp: String!
+}
+
+type Patient {
+  id: ID!
+  name: String!
+  age: Int!
+  status: String!
+  evaluationDate: String
+  psychologist: String
+  consultReason: String!
+  evaluationDraft: String
+  testResults: [TestResult!]
+  clinicalQueries: [ClinicalQuery!]
+  createdAt: String!
+  updatedAt: String!
+}
+
+type TestResult {
+  id: ID!
+  name: String!
+  score: Float!
+  interpretation: String!
+  patientId: ID!
+  patient: Patient!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type ClinicalQuery {
+  id: ID!
+  patientId: ID!
+  patient: Patient!
+  question: String!
+  answer: String
+  isFavorite: Boolean!
+  status: ClinicalQueryStatus!
+  feedback: String
+  createdAt: String!
+  updatedAt: String!
+}
+
+enum ClinicalQueryStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  ERROR
+}
+
+type ClinicalAnalysis {
+  symptoms: [String!]!
+  dsmAnalysis: [String!]!
+  possibleDiagnoses: [String!]!
+  treatmentSuggestions: [String!]!
+  currentThinking: String!
+}
+
+# Queries
+type Query {
+  # Sistema
+  healthCheck: HealthStatus!
+  
+  # Pacientes
+  patient(id: ID!): Patient
+  allPatients: [Patient!]!
+  patientsByFilter(status: String, psychologist: String): [Patient!]!
+  
+  # Consultas Clínicas
+  clinicalQuery(id: ID!): ClinicalQuery
+  clinicalQueriesByPatient(patientId: ID!): [ClinicalQuery!]!
+  
+  # Análisis Clínicos
+  clinicalAnalysis(patientId: ID!): ClinicalAnalysis
+  
+  # Resultados de pruebas
+  testResult(id: ID!): TestResult
+  testResultsByPatient(patientId: ID!): [TestResult!]!
+  
+  # Modelos disponibles (debugging)
+  availableModels: [String!]!
+}
+
+# Mutations
+type Mutation {
+  # Pacientes
+  createPatient(input: PatientInput!): Patient!
+  updatePatient(id: ID!, input: PatientInput!): Patient!
+  deletePatient(id: ID!): Boolean!
+  updateEvaluationDraft(id: ID!, draft: String!): Patient!
+  
+  # Consultas Clínicas
+  createClinicalQuery(input: ClinicalQueryInput!): ClinicalQuery!
+  processClinicalQuery(id: ID!): ClinicalQuery!
+  toggleFavoriteClinicalQuery(id: ID!): ClinicalQuery!
+  provideFeedback(id: ID!, feedback: String!): ClinicalQuery!
+  deleteClinicalQuery(id: ID!): Boolean!
+  
+  # Análisis Clínicos
+  analyzeClinicalData(patientData: String!): ClinicalAnalysis!
+  answerClinicalQuestion(analysisState: ClinicalAnalysisInput!, question: String!): String!
+  
+  # Resultados de pruebas
+  addTestResult(patientId: ID!, input: TestResultInput!): TestResult!
+  updateTestResult(id: ID!, input: TestResultInput!): TestResult!
+  deleteTestResult(id: ID!): Boolean!
+}
+
+# Inputs
+input PatientInput {
+  name: String!
+  age: Int!
+  status: String!
+  evaluationDate: String
+  psychologist: String
+  consultReason: String!
+  evaluationDraft: String
+}
+
+input ClinicalQueryInput {
+  patientId: ID!
+  question: String!
+}
+
+input TestResultInput {
+  name: String!
+  score: Float!
+  interpretation: String!
+}
+
+input ClinicalAnalysisInput {
+  patientInfo: String!
+  symptoms: [String!]!
+  dsmAnalysis: [String!]!
+  possibleDiagnoses: [String!]!
+  treatmentSuggestions: [String!]!
+  currentThinking: String!
+}
+
+# Suscripciones
+type Subscription {
+  clinicalQueryStatusChanged(patientId: ID): ClinicalQuery!
+  newPatientAdded: Patient!
+}
+
+# Esquema principal
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+} 

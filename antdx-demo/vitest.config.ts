@@ -1,16 +1,43 @@
-import { defineConfig } from 'vitest/config';
-import react from '@vitejs/plugin-react-swc';
+/// <reference types="vitest" />
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import { resolve } from 'path';
+
+// Configuración común para todos los tests
+const commonConfig = {
+  globals: true,
+  coverage: {
+    provider: 'v8',
+    reporter: ['text', 'json', 'html'],
+    exclude: [
+      'node_modules/',
+      'src/tests/setup.ts',
+    ],
+  }
+};
 
 export default defineConfig({
   plugins: [react()],
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./vitest.setup.ts'],
-    include: ['src/**/*.test.{ts,tsx}', 'src/tests/**/*.test.{ts,tsx}'],
-    coverage: {
-      reporter: ['text', 'json', 'html'],
-      exclude: ['node_modules/', 'src/test/'],
-    },
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, './src')
+    }
   },
+  test: {
+    ...commonConfig,
+    environment: 'jsdom',
+    setupFiles: ['./src/tests/setup.ts'],
+    include: [
+      'src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
+      '!server/**/*.test.*' // Excluir tests del servidor
+    ],
+    deps: {
+      inline: [
+        'antd',
+        'react-router-dom',
+        '@ant-design/icons',
+        '@testing-library/react'
+      ]
+    }
+  }
 }); 

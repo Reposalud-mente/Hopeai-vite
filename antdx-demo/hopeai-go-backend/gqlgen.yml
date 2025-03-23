@@ -1,0 +1,55 @@
+# Archivo de esquema donde se define la API GraphQL
+schema:
+  - pkg/graph/schema/*.graphql
+
+# Configuración del ejecutable generado
+exec:
+  filename: pkg/graph/generated/generated.go
+  package: generated
+
+# Configuración de los modelos generados
+model:
+  filename: pkg/graph/model/models_gen.go
+  package: model
+
+# Configuración de los resolvers
+resolver:
+  layout: follow-schema
+  dir: pkg/graph/resolver
+  package: resolver
+  filename_template: "{name}.resolvers.go"
+
+# Mapeo de tipos escalares a tipos Go
+models:
+  ID:
+    model:
+      - github.com/99designs/gqlgen/graphql.ID
+      - github.com/99designs/gqlgen/graphql.Int
+      - github.com/99designs/gqlgen/graphql.Int64
+      - github.com/99designs/gqlgen/graphql.Int32
+  Int:
+    model:
+      - github.com/99designs/gqlgen/graphql.Int
+      - github.com/99designs/gqlgen/graphql.Int64
+      - github.com/99designs/gqlgen/graphql.Int32
+  # Especificar modelos personalizados para evitar duplicación
+  Patient:
+    model: github.com/hopeai/go-backend/pkg/graph/model.Patient
+  TestResult:
+    model: github.com/hopeai/go-backend/pkg/graph/model.TestResult
+  ClinicalQuery:
+    model: github.com/hopeai/go-backend/pkg/graph/model.ClinicalQuery
+  ClinicalQueryStatus:
+    model: github.com/hopeai/go-backend/pkg/graph/model.ClinicalQueryStatus
+  ClinicalAnalysis:
+    model: github.com/hopeai/go-backend/pkg/graph/model.ClinicalAnalysis
+  HealthStatus:
+    model: github.com/hopeai/go-backend/pkg/graph/model.HealthStatus
+  PatientInput:
+    model: github.com/hopeai/go-backend/pkg/graph/model.PatientInput
+  ClinicalQueryInput:
+    model: github.com/hopeai/go-backend/pkg/graph/model.ClinicalQueryInput
+  TestResultInput:
+    model: github.com/hopeai/go-backend/pkg/graph/model.TestResultInput
+  ClinicalAnalysisInput:
+    model: github.com/hopeai/go-backend/pkg/graph/model.ClinicalAnalysisInput

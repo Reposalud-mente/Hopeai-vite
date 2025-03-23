@@ -2,45 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { ClinicalAnalysisResult, PatientAnalysis } from '../types/ai-types';
 import { analyzePatientWithBackend, testAnalysisEndpoint } from '../api/clinicalAnalysisApi';
 import { fetchAIAnalysisWithErrorHandling, chatWithPatientDataWithErrorHandling } from '../api/ai';
-
-/**
- * Representa un paso en el proceso de análisis clínico con su estado
- * @interface ThoughtStep
- * @property {string} title - Título del paso de razonamiento
- * @property {string} description - Descripción detallada del paso
- * @property {'wait' | 'processing' | 'finish' | 'error'} status - Estado actual de este paso
- * @property {React.ReactNode | null} [icon] - Icono opcional para representar visualmente el paso
- */
-export interface ThoughtStep {
-  title: string;
-  description: string;
-  status: 'wait' | 'processing' | 'finish' | 'error';
-  icon?: React.ReactNode | null;
-}
-
-/**
- * Representa un diagnóstico sugerido por el sistema de IA
- * @interface Diagnosis
- * @property {string} name - Nombre del diagnóstico (basado en DSM-5/CIE-11)
- * @property {string} description - Descripción clínica del diagnóstico
- * @property {string} confidence - Nivel de confianza del diagnóstico (bajo, medio, alto)
- */
-export interface Diagnosis {
-  name: string;
-  description: string;
-  confidence: string;
-}
-
-/**
- * Representa un mensaje en la conversación clínica
- * @interface ChatMessage
- * @property {'user' | 'assistant'} type - Origen del mensaje (usuario o asistente)
- * @property {string} content - Contenido del mensaje
- */
-export interface ChatMessage {
-  type: 'user' | 'assistant';
-  content: string;
-}
+import { ThoughtStep, Diagnosis, ChatMessage, mapStatusToComponent } from '../types/clinical-types';
 
 /**
  * Objeto devuelto por el hook useClinicalAnalysis
@@ -64,18 +26,6 @@ export interface UseClinicalAnalysisReturn {
   runAnalysis: () => Promise<void>;
   askQuestion: (question: string) => Promise<string | null>;
 }
-
-/**
- * Convierte un estado de análisis al formato interno del hook
- * @param {string} status - Estado original del análisis
- * @returns {'wait' | 'processing' | 'finish' | 'error'} Estado compatible con el componente de visualización
- */
-const mapStatusToComponent = (status: string): 'wait' | 'processing' | 'finish' | 'error' => {
-  if (status === 'error') return 'error';
-  if (status === 'processing' || status === 'pending') return 'processing';
-  if (status === 'finish' || status === 'completed') return 'finish';
-  return 'wait';
-};
 
 /**
  * Hook unificado para el análisis clínico que combina la potencia del razonamiento
@@ -201,8 +151,8 @@ export const useClinicalAnalysis = (
     }
   }, [patientInfo]);
 
-  // Función para ejecutar el análisis legado
-  const runLegacyAnalysis = useCallback(async () => {
+  // Función para ejecutar el análisis simple (no streaming)
+  const runSimpleAnalysis = useCallback(async () => {
     if (!patientInfo) return;
     
     setLoading(true);
@@ -218,7 +168,7 @@ export const useClinicalAnalysis = (
           title: step.title,
           description: step.description,
           status: mapStatusToComponent(step.status),
-          icon: null as React.ReactNode | null
+          icon: null // Los iconos se asignarán en el componente
         })));
       }
       
@@ -231,139 +181,121 @@ export const useClinicalAnalysis = (
         })));
       }
       
+      // Crear un objeto analysisState para mantener consistencia entre ambos modos
+      setAnalysisState({
+        symptoms: result.symptoms || [],
+        dsmAnalysis: result.dsmAnalysis || [],
+        possibleDiagnoses: result.diagnoses?.map(d => d.name) || [],
+        treatmentSuggestions: result.recommendations || []
+      });
+      
     } catch (err) {
       console.error('Error en el análisis clínico:', err);
       setError('Ocurrió un error en el análisis. Por favor, inténtalo de nuevo.');
+      
+      // Marcar todos los pasos como error
+      setThoughtSteps(prevSteps => 
+        prevSteps.map(step => ({
+          ...step,
+          status: step.status === 'processing' ? 'error' : step.status,
+          description: step.status === 'processing' ? "Error en el procesamiento" : step.description
+        }))
+      );
     } finally {
       setLoading(false);
     }
   }, [patientInfo]);
 
-  /**
-   * Inicia el proceso de análisis clínico basado en la información del paciente.
-   * Selecciona automáticamente entre el modo de análisis mejorado (con streaming)
-   * o el modo legado según la configuración.
-   * 
-   * Este método:
-   * 1. Inicializa el proceso de análisis
-   * 2. Gestiona estados de carga
-   * 3. Procesa la información clínica del paciente
-   * 4. Genera diagnósticos sugeridos y recomendaciones
-   * 
-   * @returns {Promise<void>} Promesa que se resuelve cuando el análisis se completa
-   * @throws {Error} Si ocurre un error durante el análisis
-   */
+  // Función unificada para ejecutar el análisis
   const runAnalysis = useCallback(async () => {
     if (useEnhancedAnalysis) {
       await runEnhancedAnalysis();
     } else {
-      await runLegacyAnalysis();
+      await runSimpleAnalysis();
     }
-  }, [useEnhancedAnalysis, runEnhancedAnalysis, runLegacyAnalysis]);
+  }, [useEnhancedAnalysis, runEnhancedAnalysis, runSimpleAnalysis]);
 
-  /**
-   * Actualiza los pasos de pensamiento basados en los resultados del análisis de la IA
-   * 
-   * @param {PatientAnalysis} analysis - Análisis del paciente recibido del servicio
-   * @param {ClinicalAnalysisResult} state - Estado actual del análisis clínico
-   */
+  // Función para actualizar los pasos de pensamiento basados en el análisis
   const updateThoughtStepsFromAnalysis = (analysis: PatientAnalysis, state: ClinicalAnalysisResult) => {
-    // Si tenemos ThoughtChain en el análisis, usarlo para actualizar los estados
+    // Si hay un ThoughtChain en el análisis, úsalo directamente
     if (analysis.thoughtChain && analysis.thoughtChain.length > 0) {
-      const updatedSteps = [...thoughtSteps];
-      
-      // Mapear cada paso del ThoughtChain a nuestros pasos
-      analysis.thoughtChain.forEach((chainStep, index) => {
-        if (index < updatedSteps.length) {
-          updatedSteps[index] = {
-            ...updatedSteps[index],
-            status: chainStep.status as 'wait' | 'processing' | 'finish' | 'error',
-            description: chainStep.description
-          };
-        }
-      });
-      
-      setThoughtSteps(updatedSteps);
-    } else {
-      // Fallback a la lógica anterior basada en el estado
-      updateThoughtSteps(state);
+      setThoughtSteps(analysis.thoughtChain.map(step => ({
+        title: step.title,
+        description: step.description,
+        status: mapStatusToComponent(step.status),
+        icon: null
+      })));
+      return;
     }
+    
+    // Si no hay ThoughtChain, actualizar basado en estado
+    updateThoughtSteps(state);
   };
   
-  /**
-   * Actualiza los pasos de pensamiento basados en el estado del análisis clínico
-   * 
-   * @param {ClinicalAnalysisResult} state - Estado actual del análisis
-   */
+  // Actualizar los pasos de pensamiento basados en el estado del análisis
   const updateThoughtSteps = (state: ClinicalAnalysisResult) => {
-    const steps = [...thoughtSteps];
-    
-    // Actualizar cada paso según el estado correspondiente
-    if (state.symptoms.length > 0) {
-      steps[0] = {
-        ...steps[0],
-        status: 'finish',
-        description: `Se identificaron ${state.symptoms.length} síntomas relevantes`
-      };
+    setThoughtSteps(prevSteps => {
+      if (!state) return prevSteps;
       
-      if (state.dsmAnalysis.length > 0) {
-        steps[1] = {
-          ...steps[1],
+      // Clonar los pasos actuales
+      const newSteps = [...prevSteps];
+      
+      // Actualizar estados basados en los datos disponibles
+      if (state.symptoms && state.symptoms.length > 0) {
+        newSteps[0] = { 
+          ...newSteps[0], 
           status: 'finish',
-          description: "Análisis DSM-5 completado"
+          description: `Se identificaron ${state.symptoms.length} síntomas principales`
         };
         
-        if (state.possibleDiagnoses.length > 0) {
-          steps[2] = {
-            ...steps[2],
-            status: 'finish',
-            description: `Se formularon ${state.possibleDiagnoses.length} diagnósticos posibles`
-          };
-          
-          if (state.treatmentSuggestions.length > 0) {
-            steps[3] = {
-              ...steps[3],
-              status: 'finish',
-              description: "Recomendaciones de tratamiento generadas"
-            };
-          } else {
-            steps[3] = {
-              ...steps[3],
-              status: 'processing',
-              description: "Generando recomendaciones de tratamiento"
-            };
-          }
-        } else {
-          steps[2] = {
-            ...steps[2],
-            status: 'processing',
-            description: "Formulando diagnósticos posibles"
-          };
-        }
-      } else {
-        steps[1] = {
-          ...steps[1],
+        newSteps[1] = { 
+          ...newSteps[1], 
           status: 'processing',
-          description: "Analizando según criterios DSM-5"
+          description: "Analizando síntomas según criterios DSM-5/CIE-11"
         };
       }
-    } else {
-      steps[0] = {
-        ...steps[0],
-        status: 'processing',
-        description: "Analizando datos del paciente"
-      };
-    }
-    
-    setThoughtSteps(steps);
+      
+      if (state.dsmAnalysis && state.dsmAnalysis.length > 0) {
+        newSteps[1] = { 
+          ...newSteps[1], 
+          status: 'finish',
+          description: `Análisis completado con ${state.dsmAnalysis.length} criterios cumplidos`
+        };
+        
+        newSteps[2] = { 
+          ...newSteps[2], 
+          status: 'processing',
+          description: "Formulando diagnósticos potenciales"
+        };
+      }
+      
+      if (state.possibleDiagnoses && state.possibleDiagnoses.length > 0) {
+        newSteps[2] = { 
+          ...newSteps[2], 
+          status: 'finish',
+          description: `Se formularon ${state.possibleDiagnoses.length} diagnósticos potenciales`
+        };
+        
+        newSteps[3] = { 
+          ...newSteps[3], 
+          status: 'processing',
+          description: "Generando recomendaciones terapéuticas"
+        };
+      }
+      
+      if (state.treatmentSuggestions && state.treatmentSuggestions.length > 0) {
+        newSteps[3] = { 
+          ...newSteps[3], 
+          status: 'finish',
+          description: `Se generaron ${state.treatmentSuggestions.length} recomendaciones`
+        };
+      }
+      
+      return newSteps;
+    });
   };
-  
-  /**
-   * Permite realizar preguntas al asistente clínico en el contexto del paciente actual
-   * 
-   * @param {string} question - Pregunta clínica formulada por el profesional
-   * @returns {Promise<string | null>} Respuesta del asistente o null si hay error
-   */
+
+  // Función para enviar una pregunta al asistente
   const askQuestion = useCallback(async (question: string): Promise<string | null> => {
     if (!question) return null;
     
@@ -376,11 +308,17 @@ export const useClinicalAnalysis = (
         content: question
       }]);
       
+      // Obtener el historial previo en el formato esperado por la API
+      const historyForApi = chatHistory.map(msg => ({
+        role: msg.type === 'user' ? 'user' : 'assistant',
+        content: msg.content
+      }));
+      
       // Obtenemos la respuesta a través del servicio centralizado
       const response = await chatWithPatientDataWithErrorHandling(
         question, 
         patientInfo, 
-        chatHistory
+        historyForApi
       );
       
       // Añadimos la respuesta al historial
@@ -403,8 +341,16 @@ export const useClinicalAnalysis = (
           title: step.title,
           description: step.description,
           status: mapStatusToComponent(step.status),
-          icon: null as React.ReactNode | null
+          icon: null
         })));
+      }
+      
+      // Si hay actualizaciones en state, actualiza analysisState
+      if (response.updatedState) {
+        setAnalysisState(current => ({
+          ...current,
+          ...response.updatedState
+        }));
       }
       
       return response.answer;

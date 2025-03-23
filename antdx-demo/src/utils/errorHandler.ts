@@ -287,11 +287,11 @@ function getMessageFromStatus(status: number): string {
 // Get severity from HTTP status code
 function getSeverityFromStatus(status: number): ErrorSeverity {
   if (status >= 500) {
-    return ErrorSeverity.CRITICAL;
-  } else if (status >= 400) {
     return ErrorSeverity.ERROR;
-  } else {
+  } else if (status >= 400) {
     return ErrorSeverity.WARNING;
+  } else {
+    return ErrorSeverity.INFO;
   }
 }
 

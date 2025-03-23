@@ -1,86 +1,72 @@
-import React from 'react';
+import { describe, it, expect, vi, test } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { BrowserRouter, MemoryRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom';
 import { PatientProvider } from '../../context/PatientContext';
 import PatientList from '../../components/PatientList';
 import PatientForm from '../../components/PatientForm';
 import { Patient } from '../../types/clinical-types';
+import { updatePatient, createPatient } from '../../api/patientApi';
 
 // Mock de los servicios y APIs
-jest.mock('../../api/patientApi', () => ({
-  getPatients: jest.fn().mockResolvedValue([
-    { 
-      id: '1', 
-      name: 'Juan Pérez', 
-      age: 35, 
-      evaluationDate: '2023-03-15', 
-      status: 'active',
-      gender: 'male',
-      occupation: 'Ingeniero',
-      contactInfo: {
-        phone: '123456789',
-        email: 'juan@example.com'
-      }
+vi.mock('../../api/patientApi', () => ({
+  getPatients: vi.fn().mockResolvedValue([
+    {
+      id: '1',
+      name: 'Juan Pérez',
+      birthDate: '1980-05-15',
+      gender: 'M',
+      contactInfo: { phone: '555-1234', email: 'juan@example.com' },
+      lastVisit: '2023-06-10'
     },
-    { 
-      id: '2', 
-      name: 'María González', 
-      age: 42, 
-      evaluationDate: '2023-02-20', 
-      status: 'completed',
-      gender: 'female',
-      occupation: 'Médico',
-      contactInfo: {
-        phone: '987654321',
-        email: 'maria@example.com'
-      }
+    {
+      id: '2',
+      name: 'María López',
+      birthDate: '1992-11-23',
+      gender: 'F',
+      contactInfo: { phone: '555-5678', email: 'maria@example.com' },
+      lastVisit: '2023-07-05'
     }
   ]),
-  getPatientById: jest.fn().mockImplementation((id) => {
-    const patients = [
-      { 
-        id: '1', 
-        name: 'Juan Pérez', 
-        age: 35, 
-        evaluationDate: '2023-03-15', 
-        status: 'active',
-        gender: 'male',
-        occupation: 'Ingeniero',
-        contactInfo: {
-          phone: '123456789',
-          email: 'juan@example.com'
-        }
-      },
-      { 
-        id: '2', 
-        name: 'María González', 
-        age: 42, 
-        evaluationDate: '2023-02-20', 
-        status: 'completed',
-        gender: 'female',
-        occupation: 'Médico',
-        contactInfo: {
-          phone: '987654321',
-          email: 'maria@example.com'
-        }
-      }
-    ];
-    return Promise.resolve(patients.find(p => p.id === id) || null);
-  }),
-  updatePatient: jest.fn().mockImplementation((patient) => Promise.resolve(patient)),
-  createPatient: jest.fn().mockImplementation((patient) => Promise.resolve({
-    ...patient,
-    id: 'new-id'
-  }))
+  getPatientById: vi.fn().mockImplementation((id) => {
+    if (id === '1') {
+      return Promise.resolve({
+        id: '1',
+        name: 'Juan Pérez',
+        birthDate: '1980-05-15',
+        gender: 'M',
+        contactInfo: { phone: '555-1234', email: 'juan@example.com' },
+        medicalHistory: 'Hipertensión, diabetes tipo 2',
+        currentMedication: 'Metformina, Lisinopril',
+        notes: 'Paciente con buen cumplimiento del tratamiento',
+        lastVisit: '2023-06-10',
+        nextAppointment: '2023-09-15'
+      });
+    }
+    return Promise.reject(new Error('Patient not found'));
+  })
+}));
+
+vi.mock('../../api/clinicalApi', () => ({
+  getClinicalTests: vi.fn().mockResolvedValue([
+    { id: 'test1', name: 'Test de Beck', date: '2023-05-05', score: 15, category: 'Depresión' },
+    { id: 'test2', name: 'STAI', date: '2023-05-05', score: 45, category: 'Ansiedad' }
+  ]),
+  getClinicalNotes: vi.fn().mockResolvedValue([
+    { id: 'note1', date: '2023-06-10', content: 'El paciente reporta mejoría en su estado de ánimo.' },
+    { id: 'note2', date: '2023-05-01', content: 'Inicio de terapia cognitivo-conductual.' }
+  ])
 }));
 
 // Mock de useNavigate
-const mockNavigate = jest.fn();
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useNavigate: () => mockNavigate
-}));
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate
+  };
+});
 
 describe('Patient Workflow Integration Tests', () => {
   // Prueba del flujo completo de pacientes
@@ -141,7 +127,7 @@ describe('Patient Workflow Integration Tests', () => {
     };
     
     // Limpiamos para la siguiente parte del test
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     
     // Renderizar el formulario en modo de edición
     const { getByLabelText, getByRole } = render(
@@ -150,8 +136,8 @@ describe('Patient Workflow Integration Tests', () => {
           <PatientForm 
             patient={mockPatient} 
             mode="edit"
-            onSave={jest.fn()}
-            onCancel={jest.fn()}
+            onSave={vi.fn()}
+            onCancel={vi.fn()}
           />
         </PatientProvider>
       </BrowserRouter>
@@ -166,7 +152,7 @@ describe('Patient Workflow Integration Tests', () => {
     
     // Verificar que se llama a la función de actualización
     await waitFor(() => {
-      expect(require('../../api/patientApi').updatePatient).toHaveBeenCalledWith(
+      expect(updatePatient).toHaveBeenCalledWith(
         expect.objectContaining({
           id: '2',
           name: 'María Luisa González',
@@ -178,7 +164,7 @@ describe('Patient Workflow Integration Tests', () => {
 
   // Flujo para crear un nuevo paciente
   test('new patient creation flow', async () => {
-    const onSave = jest.fn();
+    const onSave = vi.fn();
     
     // Renderizar formulario de nuevo paciente
     const { getByLabelText, getByRole } = render(
@@ -187,7 +173,7 @@ describe('Patient Workflow Integration Tests', () => {
           <PatientForm 
             mode="create"
             onSave={onSave}
-            onCancel={jest.fn()}
+            onCancel={vi.fn()}
           />
         </PatientProvider>
       </BrowserRouter>
@@ -203,7 +189,7 @@ describe('Patient Workflow Integration Tests', () => {
     
     // Verificar que se llama a la API para crear el paciente
     await waitFor(() => {
-      expect(require('../../api/patientApi').createPatient).toHaveBeenCalledWith(
+      expect(createPatient).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'Carlos Rodríguez',
           age: 28

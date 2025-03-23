@@ -1,5 +1,6 @@
 import { DataTypes } from 'sequelize';
-import { sequelize } from '../config.js';
+import { sequelize } from '../config';
+import { TestResult } from './testResult';
 
 // Modelo para pacientes
 const Patient = sequelize.define('Patient', {
@@ -42,48 +43,11 @@ const Patient = sequelize.define('Patient', {
   timestamps: true
 });
 
-// Modelo para resultados de pruebas psicológicas
-const TestResult = sequelize.define('TestResult', {
-  id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true
-  },
-  name: {
-    type: DataTypes.STRING,
-    allowNull: false
-  },
-  score: {
-    type: DataTypes.FLOAT,
-    allowNull: true
-  },
-  interpretation: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  date: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW
-  },
-  patientId: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    references: {
-      model: 'patients',
-      key: 'id'
-    }
-  }
-}, {
-  tableName: 'test_results',
-  timestamps: true
-});
-
-// Establecer relación
+// Establecer relación con TestResult
 Patient.hasMany(TestResult, { 
   foreignKey: 'patientId', 
   as: 'testResults'
 });
 TestResult.belongsTo(Patient, { foreignKey: 'patientId' });
 
-export { Patient, TestResult }; 
+export { Patient }; 

@@ -1,16 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Input, Button, List, Typography, Spin, Tag, Tooltip, Space } from 'antd';
-import { SendOutlined, StarOutlined, StarFilled, InfoCircleOutlined } from '@ant-design/icons';
+import { Card, List, Typography, Spin, Tag, Tooltip, Space, Button } from 'antd';
+import { 
+  StarOutlined, 
+  StarFilled, 
+  InfoCircleOutlined,
+  CopyOutlined,
+  FilePdfOutlined,
+  FileTextOutlined,
+  MailOutlined
+} 
+
+from '@ant-design/icons';
 import type { ClinicalQuery, ClinicalResponseJson } from '../../types/ClinicalQuery';
+import QueryInput from './QueryInput';
+import FeedbackForm from './FeedbackForm';
+import exportService from '../../services/exportService';
 
 const { Text, Title, Paragraph } = Typography;
-const { TextArea } = Input;
 
 interface ClinicalChatPanelProps {
   onSubmitQuery: (question: string) => Promise<ClinicalQuery | undefined>;
   onToggleFavorite?: (queryId: number, isFavorite: boolean) => Promise<void>;
   initialQueries?: ClinicalQuery[];
   loading?: boolean;
+  patientId?: string | number;
 }
 
 const ClinicalChatPanel: React.FC<ClinicalChatPanelProps> = ({
@@ -18,26 +31,27 @@ const ClinicalChatPanel: React.FC<ClinicalChatPanelProps> = ({
   onToggleFavorite,
   initialQueries = [],
   loading = false,
+  patientId,
 }) => {
   const [question, setQuestion] = useState('');
   const [queries, setQueries] = useState<ClinicalQuery[]>(initialQueries);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  
   useEffect(() => {
     if (initialQueries.length > 0) {
       setQueries(initialQueries);
     }
   }, [initialQueries]);
 
-  const handleSubmit = async () => {
-    if (!question.trim() || isSubmitting) return;
+  const handleSubmit = async (submittedQuestion: string) => {
+    if (!submittedQuestion.trim() || isSubmitting) return;
     
     setIsSubmitting(true);
     try {
-      const response = await onSubmitQuery(question);
+      const response = await onSubmitQuery(submittedQuestion);
       if (response) {
         setQueries(prev => [response, ...prev]);
-        setQuestion('');
+        setQuestion(''); // Limpiar el input después de enviar
       }
     } catch (error) {
       console.error('Error al enviar consulta:', error);
@@ -60,10 +74,6 @@ const ClinicalChatPanel: React.FC<ClinicalChatPanelProps> = ({
   };
 
   const renderResponseContent = (query: ClinicalQuery) => {
-    if (!query.responseJson) {
-      return <Paragraph>{query.answer || 'Sin respuesta'}</Paragraph>;
-    }
-
     const response = query.responseJson as ClinicalResponseJson;
     
     return (
@@ -131,11 +141,60 @@ const ClinicalChatPanel: React.FC<ClinicalChatPanelProps> = ({
           </>
         )}
         
-        <div style={{ marginTop: 16, textAlign: 'right' }}>
-          <Tooltip title={`Nivel de confianza: ${(response.confidenceScore * 100).toFixed(0)}%`}>
-            <Tag color={response.confidenceScore > 0.7 ? 'green' : response.confidenceScore > 0.4 ? 'orange' : 'red'}>
-              Confianza: {(response.confidenceScore * 100).toFixed(0)}%
-            </Tag>
+        <div style={{ marginTop: 24, marginBottom: 16 }}>
+          <FeedbackForm 
+            queryId={query.id} 
+            patientId={patientId as string}
+            onFeedbackSubmit={() => {
+              // notificationService is already used by the export service
+            }}
+          />
+        </div>
+        
+        <div className="query-actions">
+          <Tooltip title="Copiar respuesta">
+            <Button 
+              icon={<CopyOutlined />} 
+              size="small" 
+              style={{ marginRight: 8 }}
+              onClick={() => exportService.copyToClipboard(query)}
+            />
+          </Tooltip>
+          
+          <Tooltip title="Exportar como PDF">
+            <Button 
+              icon={<FilePdfOutlined />} 
+              size="small" 
+              style={{ marginRight: 8 }}
+              onClick={() => exportService.exportAsPdf(query)}
+            />
+          </Tooltip>
+          
+          <Tooltip title="Guardar como texto">
+            <Button 
+              icon={<FileTextOutlined />} 
+              size="small" 
+              style={{ marginRight: 8 }}
+              onClick={() => exportService.exportAsText(query)}
+            />
+          </Tooltip>
+          
+          <Tooltip title="Compartir por email">
+            <Button 
+              icon={<MailOutlined />} 
+              size="small" 
+              style={{ marginRight: 8 }}
+              onClick={() => exportService.shareByEmail(query)}
+            />
+          </Tooltip>
+          
+          <Tooltip title={query.isFavorite ? "Eliminar de favoritos" : "Guardar como favorito"}>
+            <Button
+              type="text"
+              icon={query.isFavorite ? <StarFilled style={{ color: '#faad14' }} /> : <StarOutlined />}
+              onClick={() => onToggleFavorite(query.id, !query.isFavorite)}
+              size="small"
+            />
           </Tooltip>
         </div>
       </>
@@ -182,29 +241,12 @@ const ClinicalChatPanel: React.FC<ClinicalChatPanelProps> = ({
         style={{ maxHeight: '400px', overflow: 'auto', marginBottom: 16 }}
       />
 
-      <div style={{ display: 'flex', marginTop: 16 }}>
-        <TextArea
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Escribe tu consulta clínica aquí..."
-          autoSize={{ minRows: 2, maxRows: 4 }}
-          style={{ flex: 1, marginRight: 8 }}
-          onPressEnter={(e) => {
-            if (!e.shiftKey) {
-              e.preventDefault();
-              handleSubmit();
-            }
-          }}
-        />
-        <Button 
-          type="primary" 
-          icon={<SendOutlined />} 
-          onClick={handleSubmit}
-          loading={isSubmitting}
-        >
-          Enviar
-        </Button>
-      </div>
+      <QueryInput
+        onSubmit={handleSubmit}
+        loading={isSubmitting}
+        initialValue={question}
+        placeholder="Escribe tu consulta clínica aquí..."
+      />
       
       <div style={{ marginTop: 8 }}>
         <Text type="secondary">

@@ -3,16 +3,17 @@
  * Este archivo contiene las interfaces para pacientes y datos clínicos
  */
 
-import { ThoughtStep, Diagnosis, Recommendation } from './ai-types';
+import { ReactNode } from 'react';
+import { Recommendation } from './ai-types';
 
-// Re-exportamos los tipos importados para que sean accesibles desde este módulo
-export { Diagnosis, Recommendation };
+// Actualizamos para exportar solo lo que no se define en este archivo
+export { Recommendation };
 
 /**
  * Estructura de datos de paciente
  */
 export interface Patient {
-  id: number;
+  id: string | number;
   name: string;
   status: string;
   birthDate?: string;
@@ -109,4 +110,75 @@ export interface ClinicalReport {
   recommendationsSection: string;
   createdAt: string;
   psychologist: string;
+}
+
+/**
+ * Representa un paso en el proceso de análisis clínico con su estado
+ * @interface ThoughtStep
+ * @property {string} title - Título del paso de razonamiento
+ * @property {string} description - Descripción detallada del paso
+ * @property {'wait' | 'processing' | 'finish' | 'error'} status - Estado actual de este paso
+ * @property {React.ReactNode | null} [icon] - Icono opcional para representar visualmente el paso
+ */
+export interface ThoughtStep {
+  title: string;
+  description: string;
+  status: 'wait' | 'processing' | 'finish' | 'error';
+  icon?: ReactNode | null;
+}
+
+/**
+ * Representa un diagnóstico sugerido por el sistema de IA
+ * @interface Diagnosis
+ * @property {string} name - Nombre del diagnóstico (basado en DSM-5/CIE-11)
+ * @property {string} description - Descripción clínica del diagnóstico
+ * @property {string} confidence - Nivel de confianza del diagnóstico (bajo, medio, alto)
+ */
+export interface Diagnosis {
+  name: string;
+  description: string;
+  confidence: string;
+}
+
+/**
+ * Representa un mensaje en la conversación clínica
+ * @interface ChatMessage
+ * @property {'user' | 'assistant'} type - Origen del mensaje (usuario o asistente)
+ * @property {string} content - Contenido del mensaje
+ */
+export interface ChatMessage {
+  type: 'user' | 'assistant';
+  content: string;
+}
+
+/**
+ * Utilitario para convertir un estado de análisis al formato interno del componente
+ * @param status - Estado original del análisis
+ * @returns Estado compatible con el componente
+ */
+export const mapStatusToComponent = (status: string): 'wait' | 'processing' | 'finish' | 'error' => {
+  if (status === 'error') return 'error';
+  if (status === 'processing' || status === 'pending') return 'processing';
+  if (status === 'finish' || status === 'completed') return 'finish';
+  return 'wait';
+};
+
+/**
+ * Estado de la operación de análisis clínico
+ */
+export type ClinicalAnalysisStatus = 
+  | 'idle'        // Sin iniciar
+  | 'processing'  // En proceso
+  | 'completed'   // Completado con éxito
+  | 'error';      // Error durante el proceso
+
+/**
+ * Resultado de tratamiento sugerido para un paciente
+ */
+export interface TreatmentSuggestion {
+  id: string;
+  title: string;
+  description: string;
+  type: 'tratamiento' | 'seguimiento' | 'estudio';
+  priority: 'alta' | 'media' | 'baja';
 } 

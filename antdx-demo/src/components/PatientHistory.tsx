@@ -106,13 +106,13 @@ const PatientHistory: React.FC<PatientHistoryProps> = ({
     }
 
     return (
-      <Timeline mode="left">
-        {evaluations.map((evaluation) => (
-          <Timeline.Item 
-            key={evaluation.id} 
-            label={evaluation.date}
-            dot={<FileTextOutlined style={{ fontSize: '16px' }} />}
-          >
+      <Timeline 
+        mode="left" 
+        items={evaluations.map((evaluation) => ({
+          key: evaluation.id,
+          label: evaluation.date,
+          dot: <FileTextOutlined style={{ fontSize: '16px' }} />,
+          children: (
             <Card style={{ marginBottom: 16 }}>
               <Descriptions size="small" column={1}>
                 <Descriptions.Item label="Psicólogo/a">{evaluation.psychologist}</Descriptions.Item>
@@ -130,9 +130,9 @@ const PatientHistory: React.FC<PatientHistoryProps> = ({
                 )}
               </Descriptions>
             </Card>
-          </Timeline.Item>
-        ))}
-      </Timeline>
+          )
+        }))}
+      />
     );
   };
 

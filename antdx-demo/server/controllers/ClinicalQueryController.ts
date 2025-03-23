@@ -24,7 +24,7 @@ export class ClinicalQueryController {
       const { limit = 20, offset = 0, tag, favorite } = req.query;
       
       // Construir condiciones de búsqueda
-      const where: Record<string, any> = { patientId };
+      const where: Record<string, unknown> = { patientId };
       
       if (tag) {
         where.tags = { [Op.contains]: [tag] };
@@ -119,7 +119,7 @@ export class ClinicalQueryController {
       
       await transaction.commit();
       
-      // Procesar la consulta con IA de manera asíncrona
+      // Procesar la consulta con IA de manera asíncrona (puede implementarse un worker aquí)
       this.processQueryAsync(query.getDataValue('id'));
       
       res.status(201).json({
@@ -200,7 +200,7 @@ export class ClinicalQueryController {
       }
       
       // Actualizar consulta
-      const updatedFields: Record<string, any> = {};
+      const updatedFields: Record<string, unknown> = {};
       
       if (answer !== undefined) updatedFields.answer = answer;
       if (responseJson !== undefined) updatedFields.responseJson = responseJson;
@@ -267,7 +267,7 @@ export class ClinicalQueryController {
   }
   
   /**
-   * Marca/desmarca una consulta como favorita
+   * Cambia el estado de favorito de una consulta
    */
   async toggleFavorite(req: Request, res: Response): Promise<void> {
     try {
@@ -283,30 +283,120 @@ export class ClinicalQueryController {
         return;
       }
       
-      // Cambiar estado de favorito
-      await query.update({ isFavorite: !query.getDataValue('isFavorite') });
+      // Obtener estado actual y cambiarlo
+      const currentStatus = query.getDataValue('isFavorite') as boolean;
+      await query.update({ isFavorite: !currentStatus });
       
       res.status(200).json({
         success: true,
         data: await ClinicalQuery.findByPk(id)
       });
     } catch (error) {
-      console.error('Error al actualizar estado de favorito:', error);
+      console.error('Error al cambiar estado de favorito:', error);
       res.status(500).json({
         success: false,
-        error: 'Error al actualizar estado de favorito'
+        error: 'Error al cambiar estado de favorito'
       });
     }
   }
   
   /**
-   * Procesa una consulta de forma asíncrona
+   * Método auxiliar para procesar una consulta de forma asíncrona
+   * Esto debería ser reemplazado por un sistema de colas en producción
    */
   private async processQueryAsync(queryId: number): Promise<void> {
     try {
-      await this.clinicalQueryService.processQuery(queryId);
+      // Obtener la consulta
+      const query = await ClinicalQuery.findByPk(queryId);
+      if (!query) {
+        console.error(`No se pudo encontrar la consulta ${queryId} para procesamiento asíncrono`);
+        return;
+      }
+      
+      // Actualizar con mensaje de procesamiento
+      await query.update({
+        answer: 'Procesando consulta clínica...',
+        responseJson: {
+          mainAnswer: 'Procesando consulta clínica...',
+          reasoning: '',
+          confidenceScore: 0,
+          references: []
+        }
+      });
+      
+      // Procesar consulta (idealmente esto sería manejado por un worker)
+      setTimeout(async () => {
+        try {
+          await this.clinicalQueryService.processQuery(queryId);
+        } catch (error) {
+          console.error(`Error en procesamiento asíncrono de consulta ${queryId}:`, error);
+          
+          // Actualizar con mensaje de error
+          await query.update({
+            answer: 'Error al procesar la consulta. Por favor, inténtelo de nuevo.',
+            responseJson: {
+              mainAnswer: 'Error al procesar la consulta',
+              reasoning: 'Se produjo un error durante el procesamiento',
+              confidenceScore: 0,
+              references: []
+            },
+            confidenceScore: 0
+          });
+        }
+      }, 500); // Pequeño retraso para simular procesamiento asíncrono
     } catch (error) {
-      console.error(`Error al procesar consulta ${queryId} de forma asíncrona:`, error);
+      console.error(`Error al iniciar procesamiento asíncrono para consulta ${queryId}:`, error);
     }
   }
-} 
+}
+
+/**
+ * Registra la retroalimentación del usuario sobre una respuesta clínica
+ * @param req Solicitud con el ID de la consulta y datos de retroalimentación
+ * @param res Respuesta del servidor
+ */
+export const provideFeedback = async (req: Request, res: Response) => {
+  const { queryId } = req.params;
+  const { rating, feedback, helpful, accurate, detailed } = req.body;
+  
+  if (!queryId) {
+    return res.status(400).json({ 
+      error: 'ID de consulta requerido'
+    });
+  }
+  
+  try {
+    // Obtener la consulta existente
+    const query = await ClinicalQuery.findByPk(parseInt(queryId));
+    
+    if (!query) {
+      return res.status(404).json({ 
+        error: 'Consulta no encontrada'
+      });
+    }
+    
+    // Actualizar con la retroalimentación
+    await query.update({
+      feedbackRating: rating,
+      feedbackComment: feedback,
+      feedbackTags: [
+        ...(helpful ? ['útil'] : []),
+        ...(accurate ? ['precisa'] : []),
+        ...(detailed ? ['detallada'] : [])
+      ],
+      hasFeedback: true
+    });
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Retroalimentación registrada correctamente',
+      query
+    });
+  } catch (error) {
+    console.error('Error al registrar retroalimentación:', error);
+    return res.status(500).json({
+      error: 'Error al registrar retroalimentación',
+      details: error instanceof Error ? error.message : 'Error desconocido'
+    });
+  }
+}; 

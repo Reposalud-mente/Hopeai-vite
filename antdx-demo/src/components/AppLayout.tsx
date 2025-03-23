@@ -18,7 +18,7 @@ const AppLayoutContent: React.FC<AppLayoutProps> = ({ children }) => {
   const { breadcrumbs } = useNavigation();
 
   return (
-    <Layout style={{ minHeight: '100vh', width: '100%', display: 'flex' }}>
+    <Layout style={{ minHeight: '100vh', width: '100%', display: 'flex' }} className="app-layout">
       <Sider 
         trigger={null} 
         collapsible 
